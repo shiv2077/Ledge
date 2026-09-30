@@ -1,0 +1,13 @@
+<schemalist>
+  <schema id="org.gnome.shell.extensions.ledge" path="/org/gnome/shell/extensions/ledge/">
+    <key name="edge" type="s"><default>'right'</default><choices><choice value="top"/><choice value="right"/><choice value="bottom"/><choice value="left"/></choices><summary>Screen edge</summary></key>
+    <key name="monitor" type="i"><default>-1</default><range min="-1" max="32"/><summary>Monitor index, or -1 for primary</summary></key>
+    <key name="always-show" type="b"><default>false</default><summary>Keep usage rings expanded</summary></key>
+    <key name="demo" type="b"><default>false</default><summary>Show sample readings without reading accounts</summary></key>
+    <key name="claude" type="b"><default>true</default><summary>Read Claude Code usage</summary></key>
+    <key name="cursor" type="b"><default>true</default><summary>Read Cursor usage</summary></key>
+    <key name="codex" type="b"><default>true</default><summary>Read Codex usage</summary></key>
+    <key name="poll-seconds" type="i"><default>300</default><range min="60" max="1800"/><summary>Seconds between reads</summary></key>
+    <key name="toggle-notch" type="as"><default>['&lt;Super&gt;&lt;Shift&gt;l']</default><summary>Focus or collapse Ledge</summary></key>
+  </schema>
+</schemalist>

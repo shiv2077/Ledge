@@ -1,0 +1,4 @@
+dist/
+.smoke/
+__pycache__/
+schemas/gschemas.compiled

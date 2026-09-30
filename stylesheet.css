@@ -1,0 +1,19 @@
+.ledge-cell { border-radius: 10px; padding: 0; background-color: transparent; }
+.ledge-cell:hover { background-color: transparent; }
+.ledge-cell:focus { background-color: #242424; }
+.ledge-percent { font-size: 14px; font-weight: 600; color: #ffffff; text-align: center; }
+.ledge-detail-wrap { spacing: 0; }
+.ledge-detail { background-color: #000000; color: #ffffff; border-radius: 16px; spacing: 12px; box-shadow: 0 6px 18px 0 rgba(0, 0, 0, 0.32); }
+.ledge-title { font-size: 16px; font-weight: 600; color: #ffffff; }
+.ledge-muted { color: #a0a0a0; font-size: 11px; }
+.ledge-window { spacing: 0; }
+.ledge-window-title { font-size: 12px; font-weight: 400; color: #ffffff; }
+.ledge-warning { color: #ff855c; font-size: 12px; }
+.ledge-hairline { background-color: #303030; margin-top: 2px; margin-bottom: 2px; }
+.ledge-action { padding: 7px 12px; border-radius: 8px; background-color: #242424; color: #ffffff; font-size: 12px; }
+.ledge-action:hover { background-color: #343434; }
+.ledge-action:focus { background-color: #404040; box-shadow: inset 0 0 0 1px #a0a0a0; }
+
+.ledge-actions { spacing: 8px; }
+.ledge-settings { padding: 0; background-color: transparent; color: #ffffff; }
+.ledge-settings:hover, .ledge-settings:focus, .ledge-settings:active { background-color: transparent; }
