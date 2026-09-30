@@ -29,7 +29,11 @@ Ledge is a GNOME Shell extension: a notch on a screen edge whose cells are widge
 
 | File | Role |
 | --- | --- |
-| `extension.js` | Notch host: placement, unfold motion, cells, cards, keyboard focus |
+| `extension.js` | Notch host: placement, unfold motion, cells, cards, keyboard focus. `MODULES` sets cell order |
+| `lib/module.js` | `Module` base class, the interface every widget implements |
+| `lib/subprocess.js` | `run(argv, {timeout, signal, cancellable, stderr})`: async, killed on timeout or cancel, never rejects |
+| `lib/http.js` | `getJson` / `postJson` via Soup 3: localhost only, no redirects, no proxy, per-call timeout, never rejects |
+| `modules/usage.js` | Claude, Cursor, Codex modules sharing one `UsageSource` reader process |
 | `model.js` | Pure helpers, tested with Node |
 | `design.js` | Palette, layout tokens, spring motion |
 | `draw.js` | Cairo drawing for notch, rings, bars, tail, settings orb |
@@ -37,30 +41,35 @@ Ledge is a GNOME Shell extension: a notch on a screen edge whose cells are widge
 | `prefs.js` | Adwaita preferences |
 | `reader/usage_reader.py`, `reader/activity.py` | Usage and session activity readers, run as subprocesses |
 
-## Module interface (introduced in the module-system phase)
+## Module interface
 
-Each feature lives in `modules/<id>.js` and extends `Module` from `lib/module.js`:
+Each widget lives in `modules/<id>.js` and extends `Module` from `lib/module.js`:
 
 ```js
-export class Module {
-    static id = '';        // also the GSettings bool key that enables it
-    static title = '';
-    accent = PALETTE.textPrimary;
-    constructor(host) { this.host = host; }  // {settings, path, changed(mod), openPreferences(), holdOpen(bool)}
-    start() {}                                // begin polling / monitoring
-    stop() {}                                 // base cancels this.cancellable and this.timeout() sources
-    cell() { return {icon, fraction: null, label: '—', stale: false, alert: false, sessions: []}; }
-    card(ui) { return []; }                   // build body with ui helpers; return extra actions
-    changed() { this.host.changed(this); }    // redraw this cell and its open card
+class Example extends Module {
+    static id = 'example';     // also the GSettings bool key that enables it
+    static title = 'Example';
+    start() {}                 // begin polling or monitoring
+    stop() {}                  // must leave no timers, processes, monitors, signals or proxies
+    cell() {                   // what the notch draws
+        return {fraction: null /* 0..1 ring fill */, label: '—', stale: false, accent: '#rrggbb',
+            glyph: null /* glyphs.js key */, sessions: [], animating: false, accessibleName: 'Example'};
+    }
+    heading() {}               // card title, defaults to static title
+    card(body, ui) { return [['Label', callback]]; }  // fill body, return extra footer actions
 }
+// this.changed() pushes an update; the host coalesces updates into one redraw.
 ```
 
-The host constructs a module only while its key is on and calls `stop()` when it turns off and in `disable()`. Fixed cell order: claude, cursor, codex, power, todo, models, github, training. Modules use `lib/subprocess.js` and `lib/http.js` rather than their own process or HTTP code.
+The host object passed to the constructor is `{settings, path, changed(module), openPreferences()}`. The host constructs a module only while its key is on, calls `start()`, and calls `stop()` when the key turns off and in `disable()`. A module checks `settings.get_boolean(id)` in `stop()` to tell "switched off" from "extension disabled". Card `ui` factories: `label(text, style)`, `splitRow(leading, trailing, style)`, `bar(leading, trailing, fraction, stale, color, caption)`, `box(style)`, `hairline()`. The footer always ends with Settings. Tab walks every focusable actor in the card.
+
+Fixed cell order: claude, cursor, codex, power, todo, models, github, training. Modules use `lib/subprocess.js` and `lib/http.js` rather than their own process or HTTP code. In GJS, `Gio.Cancellable.connect(fn)` is `g_cancellable_connect`, not the GObject signal connect.
 
 ## Testing workflow
 
 - `make test` must pass: Node tests, Python unittest, strict schema compile, `node --check` on every JS file.
-- `make smoke` runs a headless shell with demo data.
+- `make smoke` runs a real headless GNOME Shell with demo data and must pass. It and the GJS helper test run under `CLEAN_ENV` because the VS Code snap injects libraries and an old `GSETTINGS_SCHEMA_DIR`; run any ad hoc `gjs` or `gnome-shell` the same way.
+- `tests/helpers.gjs.js` covers `lib/subprocess.js` and `lib/http.js` (timeouts, cancel, leaks, localhost refusal, redirects).
 - The owner tests with `make reload` (schema and settings) or `make nested` / a fresh login (JS changes, since GJS caches modules), and watches `journalctl --user -f -o cat /usr/bin/gnome-shell`.
 - Work one phase at a time. Stop after each phase with exact test steps and wait for confirmation.
 - Commit only after the owner confirms a phase works. Conventional, clear messages. No co-author trailers or AI attribution anywhere.

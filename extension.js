@@ -1,5 +1,4 @@
 import Clutter from 'gi://Clutter';
-import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Meta from 'gi://Meta';
 import Shell from 'gi://Shell';
@@ -7,19 +6,29 @@ import St from 'gi://St';
 import Pango from 'gi://Pango';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
-import {PROVIDERS, NAMES, position, percentage, resetText, normalize, usageSummary, remainingPercent} from './model.js';
+import {position} from './model.js';
 import {LAYOUT, shapeLength, springSample, clampUnit, notchGeometry} from './design.js';
 import {drawFilledPath, traceNotchPath, drawRing, drawProgressBar, drawTooltipTail, drawGlyph, drawSettings, drawSettingsGlyph} from './draw.js';
+import {closeHttp} from './lib/http.js';
+import {USAGE_MODULES} from './modules/usage.js';
+
+// Cell order in the notch.
+const MODULES = [...USAGE_MODULES];
 
 export default class Ledge extends Extension {
     enable() {
         this._alive = true;
-        this._generation = 0;
-        this._readings = [];
-        this._activities = [];
+        this._modules = new Map();
+        this._pendingChanges = new Set();
         this._rings = [];
-        this._displayPercents = {};
+        this._displayFractions = {};
         this._settings = this.getSettings();
+        this._moduleHost = {
+            settings: this._settings,
+            path: this.path,
+            changed: module => this._changed(module),
+            openPreferences: () => this.openPreferences(),
+        };
         this._ignoreHover = false;
         this._detailMounted = false;
         this._expanded = this._settings.get_boolean('always-show');
@@ -32,7 +41,6 @@ export default class Ledge extends Extension {
         this._orbReveal = this._expandT;
         this._orbRevealVelocity = 0;
         this._cellMotion = new Map();
-        this._refreshing = new Set();
 
         this._host = new St.Widget({reactive: true, track_hover: true, clip_to_allocation: true});
         this._notchBg = new St.DrawingArea({reactive: false});
@@ -121,24 +129,8 @@ export default class Ledge extends Extension {
             this._hideDetail();
             this._expanded = this._settings.get_boolean('always-show');
             this._expandTarget = this._expanded ? 1 : 0;
-            if (PROVIDERS.includes(key) || key === 'demo') {
-                this._cancelRead();
-                this._cancelActivity();
-                this._readings = [];
-                this._activities = [];
-                if (PROVIDERS.includes(key) && !this._settings.get_boolean(key)) {
-                    for (const suffix of ['.json', '.backoff.json']) {
-                        const file = Gio.File.new_for_path(`${GLib.get_user_cache_dir()}/ledge/${key}${suffix}`);
-                        file.delete_async(GLib.PRIORITY_DEFAULT, null, (f, r) => {
-                            try { f.delete_finish(r); } catch { /* Cache may not exist. */ }
-                        });
-                    }
-                }
-                this._refresh();
-                this._refreshActivity();
-            }
+            if (MODULES.some(M => M.id === key)) this._syncModules();
             this._render();
-            if (key === 'poll-seconds') this._schedule();
             if (key === 'always-show') this._expandTarget = this._expanded ? 1 : 0;
             this._animateMotion();
         });
@@ -155,15 +147,42 @@ export default class Ledge extends Extension {
                 else this._hideDetail();
             });
 
+        this._syncModules();
         this._render();
-        this._schedule();
-        this._refresh();
-        this._refreshActivity();
-        this._activityPoll = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 3, () => {
-            this._refreshActivity();
-            return GLib.SOURCE_CONTINUE;
-        });
         this._animateMotion();
+    }
+
+    // Starts modules whose key is on and stops the rest.
+    _syncModules() {
+        for (const M of MODULES) {
+            const running = this._modules.get(M.id);
+            const wanted = this._settings.get_boolean(M.id);
+            if (wanted && !running) {
+                const module = new M(this._moduleHost);
+                this._modules.set(M.id, module);
+                module.start();
+            } else if (!wanted && running) {
+                this._modules.delete(M.id);
+                running.stop();
+                delete this._displayFractions[M.id];
+            }
+        }
+    }
+
+    // Coalesces updates from several modules into one redraw before paint.
+    _changed(module) {
+        if (!this._alive || !this._modules.has(module.id)) return;
+        this._pendingChanges.add(module.id);
+        if (this._changeIdle) return;
+        this._changeIdle = GLib.idle_add(GLib.PRIORITY_HIGH_IDLE, () => {
+            this._changeIdle = 0;
+            const changed = this._pendingChanges;
+            this._pendingChanges = new Set();
+            this._render();
+            if (!this._overviewActive() && this._detail.visible && changed.has(this._selected))
+                this._showDetail(this._selected, true);
+            return GLib.SOURCE_REMOVE;
+        });
     }
 
     _edge() { return this._settings.get_string('edge'); }
@@ -291,72 +310,18 @@ export default class Ledge extends Extension {
         this._place();
     }
 
-    _cancelActivity() {
-        this._activityGeneration = (this._activityGeneration ?? 0) + 1;
-        this._activityCancel?.cancel();
-        this._activityProcess?.force_exit();
-        this._activityProcess = this._activityCancel = null;
-        if (this._activityWatchdog) GLib.Source.remove(this._activityWatchdog);
-        this._activityWatchdog = 0;
-    }
-
-    _refreshActivity() {
-        if (!this._alive || this._activityProcess) return;
-        const generation = this._activityGeneration = (this._activityGeneration ?? 0) + 1;
-        const args = ['/usr/bin/python3', `${this.path}/reader/activity.py`, '--providers', this._enabled().join(',')];
-        if (this._settings.get_boolean('demo')) args.push('--demo');
-        try {
-            const proc = Gio.Subprocess.new(args, Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_SILENCE);
-            this._activityProcess = proc;
-            this._activityCancel = new Gio.Cancellable();
-            this._activityWatchdog = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 4, () => {
-                this._activityWatchdog = 0;
-                proc.force_exit();
-                return GLib.SOURCE_REMOVE;
-            });
-            proc.communicate_utf8_async(null, this._activityCancel, (p, result) => {
-                if (!this._alive || generation !== this._activityGeneration) return;
-                if (this._activityWatchdog) GLib.Source.remove(this._activityWatchdog);
-                this._activityWatchdog = 0;
-                this._activityProcess = this._activityCancel = null;
-                let activities = [];
-                try {
-                    const [, stdout] = p.communicate_utf8_finish(result);
-                    if (!p.get_successful() || stdout.length > 131072) throw new Error('Activity reader failed');
-                    const data = JSON.parse(stdout);
-                    if (data.version !== 1 || !Array.isArray(data.providers)) throw new Error('Invalid activity');
-                    activities = data.providers.filter(row => this._enabled().includes(row.id)).map(row => ({
-                        id: row.id,
-                        sessions: (Array.isArray(row.sessions) ? row.sessions : []).filter(s => ['busy', 'waiting', 'idle'].includes(s?.state)).slice(0, 12)
-                            .map(s => ({state: s.state, name: String(s.name || 'Session').slice(0, 100), detail: String(s.detail || '').slice(0, 160),
-                                waitingFor: s.waitingFor ? String(s.waitingFor).slice(0, 160) : '', derived: s.derived === true})),
-                    }));
-                } catch { /* Missing activity is unknown. */ }
-                if (JSON.stringify(activities) !== JSON.stringify(this._activities)) {
-                    this._activities = activities;
-                    this._render();
-                    if (!this._overviewActive() && this._detail.visible && this._selected) this._showDetail(this._selected, true);
-                }
-            });
-        } catch { this._activityProcess = null; }
-    }
-
-    _sessions(id) { return this._activities.find(p => p.id === id)?.sessions ?? []; }
-
     _animateRings() {
         if (this._animation) GLib.Source.remove(this._animation);
         this._animation = 0;
         const needsMotion = this._expandT > 0.5 || this._orbHover ||
-            this._activities.some(p => p.sessions.some(s => s.state !== 'idle')) ||
-            this._refreshing.size > 0;
+            [...this._modules.values()].some(m => m.cell().animating);
         if (!needsMotion || !St.Settings.get().enable_animations) return;
         this._animation = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
-            for (const id of this._enabled()) {
-                const reading = this._readings.find(p => p.id === id);
-                const target = reading?.windows?.[0]?.usedPercent;
+            for (const [id, module] of this._modules) {
+                const target = module.cell().fraction;
                 if (typeof target === 'number') {
-                    const cur = this._displayPercents[id] ?? target;
-                    this._displayPercents[id] = cur + (target - cur) * 0.12;
+                    const cur = this._displayFractions[id] ?? target;
+                    this._displayFractions[id] = cur + (target - cur) * 0.12;
                 }
             }
             this._notchBg.queue_repaint();
@@ -374,9 +339,15 @@ export default class Ledge extends Extension {
         if (this._detail.visible) {
             const card = this._detail.get_first_child()?.get_children()
                 .find(child => child.has_style_class_name('ledge-detail'));
-            const actions = card?.get_last_child();
-            if (actions)
-                targets.push(...actions.get_children().filter(a => a.can_focus));
+            // Card controls in reading order, so Tab reaches entries and rows too.
+            const walk = actor => {
+                for (const child of actor.get_children()) {
+                    if (!child.visible) continue;
+                    if (child instanceof St.Widget && child.can_focus) targets.push(child);
+                    else walk(child);
+                }
+            };
+            if (card) walk(card);
         }
         if (this._orb.visible) targets.push(this._orb);
         return targets;
@@ -404,75 +375,7 @@ export default class Ledge extends Extension {
         return Clutter.EVENT_STOP;
     }
 
-    _enabled() { return PROVIDERS.filter(id => this._settings.get_boolean(id)); }
-
-    _schedule() {
-        if (this._poll) GLib.Source.remove(this._poll);
-        this._poll = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, this._settings.get_int('poll-seconds'), () => {
-            this._refresh();
-            return GLib.SOURCE_CONTINUE;
-        });
-    }
-
-    _cancelRead() {
-        this._generation++;
-        if (this._watchdog) GLib.Source.remove(this._watchdog);
-        this._watchdog = 0;
-        this._cancel?.cancel();
-        this._process?.send_signal(15);
-        this._process = null;
-        this._cancel = null;
-        this._refreshing.clear();
-    }
-
-    _refresh() {
-        if (!this._alive || this._process) return;
-        const generation = ++this._generation;
-        for (const id of this._enabled()) this._refreshing.add(id);
-        const args = ['/usr/bin/python3', `${this.path}/reader/usage_reader.py`, '--providers', this._enabled().join(',')];
-        if (this._settings.get_boolean('demo')) args.push('--demo');
-        try {
-            const process = new Gio.Subprocess({argv: args, flags: Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_SILENCE});
-            process.init(null);
-            this._process = process;
-            this._cancel = new Gio.Cancellable();
-            this._watchdog = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 55, () => {
-                this._watchdog = 0;
-                process.send_signal(15);
-                return GLib.SOURCE_REMOVE;
-            });
-            process.communicate_utf8_async(null, this._cancel, (proc, result) => {
-                if (!this._alive || generation !== this._generation) return;
-                if (this._watchdog) GLib.Source.remove(this._watchdog);
-                this._watchdog = 0;
-                this._process = null;
-                this._cancel = null;
-                this._refreshing.clear();
-                try {
-                    const [, stdout] = proc.communicate_utf8_finish(result);
-                    if (!proc.get_successful() || stdout.length > 131072) throw new Error('Reader failed');
-                    this._readings = normalize(JSON.parse(stdout), this._enabled());
-                } catch {
-                    this._readerFailed();
-                }
-                this._render();
-                if (!this._overviewActive() && this._detail.visible && this._selected)
-                    this._showDetail(this._selected, true);
-            });
-        } catch {
-            this._process = null;
-            this._refreshing.clear();
-            this._readerFailed();
-            this._render();
-        }
-    }
-
-    _readerFailed() {
-        this._readings = this._enabled().map(id => ({
-            ...(this._readings.find(p => p.id === id) ?? {id, name: NAMES[id], windows: []}),
-            status: 'stale', message: 'Usage reader failed. Check Python 3 is installed, then refresh.',
-        }));
-    }
+    _enabled() { return MODULES.filter(M => this._modules.has(M.id)).map(M => M.id); }
 
     _overviewActive() {
         const overview = Main.overview;
@@ -588,11 +491,9 @@ export default class Ledge extends Extension {
         this._stack.set_style(`padding: ${vertical ? `${start}px 0 ${end}px` : `0 ${end}px 0 ${start}px`}; spacing: ${Math.round(LAYOUT.cellSpacing)}px;`);
 
         enabled.forEach(id => {
-            const reading = this._readings.find(p => p.id === id);
-            const value = reading?.windows?.[0]?.usedPercent;
-            const stale = reading?.status !== 'ok';
-            const display = this._displayPercents[id] ?? value;
-            if (typeof value === 'number') this._displayPercents[id] = display ?? value;
+            const info = this._modules.get(id).cell();
+            // The last shown value persists while a reading is briefly missing.
+            if (typeof info.fraction === 'number') this._displayFractions[id] ??= info.fraction;
 
             const cell = new St.BoxLayout({
                 vertical: vertical, x_align: Clutter.ActorAlign.CENTER,
@@ -601,19 +502,19 @@ export default class Ledge extends Extension {
             });
             const button = new St.Button({
                 style_class: 'ledge-cell', can_focus: true, track_hover: true,
-                accessible_name: `${NAMES[id]}: ${percentage(remainingPercent(value))} left${stale ? ', reading unavailable or stale' : ''}`,
+                accessible_name: info.accessibleName,
             });
             const inner = new St.BoxLayout({vertical: vertical, x_align: Clutter.ActorAlign.CENTER, style: `spacing: ${Math.round(LAYOUT.ringLabelGap)}px;`});
             const ring = new St.DrawingArea({width: LAYOUT.ringDiameter, height: LAYOUT.ringDiameter, x_align: Clutter.ActorAlign.CENTER, y_align: Clutter.ActorAlign.CENTER});
             ring.connect('repaint', area => {
                 const cr = area.get_context();
                 const [w, h] = area.get_surface_size();
-                drawRing(cr, w, h, this._displayPercents[id] ?? value, stale, GLib.get_monotonic_time() / 1000000, this._sessions(id), id);
+                drawRing(cr, w, h, this._displayFractions[id] ?? info.fraction, info, GLib.get_monotonic_time() / 1000000);
                 cr.$dispose();
             });
             this._rings.push(ring);
             inner.add_child(ring);
-            inner.add_child(new St.Label({text: percentage(remainingPercent(value)), style_class: 'ledge-percent', x_align: Clutter.ActorAlign.CENTER, y_align: Clutter.ActorAlign.CENTER}));
+            inner.add_child(new St.Label({text: info.label, style_class: 'ledge-percent', x_align: Clutter.ActorAlign.CENTER, y_align: Clutter.ActorAlign.CENTER}));
             button.set_child(inner);
             button.connect('notify::hover', () => { if (button.hover && !this._overviewActive()) this._showDetail(id); });
             button.connect('key-focus-in', () => { if (!this._overviewActive()) this._showDetail(id); });
@@ -684,28 +585,39 @@ export default class Ledge extends Extension {
         return row;
     }
 
-    _barRow(window, stale, providerId) {
+    // A labelled progress bar: leading and trailing text, bar, caption below.
+    _barRow(leading, trailing, fraction, stale, color, caption) {
         const block = new St.BoxLayout({vertical: true, style_class: 'ledge-window'});
-        block.add_child(this._splitRow(window.label, resetText(window.resetsAt)));
+        block.add_child(this._splitRow(leading, trailing));
         const bar = new St.DrawingArea({
             width: LAYOUT.cardWidth - 2 * LAYOUT.cardPadding,
             height: LAYOUT.barHeight + 2,
             style: `margin-top: ${Math.round(LAYOUT.labelToBar)}px; margin-bottom: ${Math.round(LAYOUT.barToUsed)}px;`,
         });
-        const fraction = remainingPercent(window.usedPercent) === null ? null : remainingPercent(window.usedPercent) / 100;
         bar.connect('repaint', area => {
             const cr = area.get_context();
             const [w] = area.get_surface_size();
-            drawProgressBar(cr, 0, 1, w, fraction, stale, providerId);
+            drawProgressBar(cr, 0, 1, w, fraction, stale, color);
             cr.$dispose();
         });
         block.add_child(bar);
-        block.add_child(this._label(usageSummary(window.usedPercent), 'ledge-window-title'));
+        block.add_child(this._label(caption, 'ledge-window-title'));
         return block;
     }
 
+    _cardUi() {
+        return {
+            label: (text, style) => this._label(text, style),
+            splitRow: (...args) => this._splitRow(...args),
+            bar: (...args) => this._barRow(...args),
+            box: style => new St.BoxLayout({vertical: true, style}),
+            hairline: () => new St.Widget({height: LAYOUT.hairline, style_class: 'ledge-hairline'}),
+        };
+    }
+
     _showDetail(id, refresh = false) {
-        if (this._overviewActive()) { this._hideDetail(); return; }
+        const module = this._modules.get(id);
+        if (this._overviewActive() || !module) { this._hideDetail(); return; }
         if (this._detail.visible && this._selected === id && !refresh) return;
         const switching = this._detail.visible && this._selected !== id;
         const entering = !this._detail.visible;
@@ -734,53 +646,24 @@ export default class Ledge extends Extension {
             width: LAYOUT.cardWidth, style: `spacing: ${LAYOUT.blockSpacing}px; padding: ${LAYOUT.cardPadding}px;`});
         const body = new St.BoxLayout({vertical: true, style: `spacing: ${LAYOUT.blockSpacing}px;`});
         card.add_child(body);
-        const p = this._readings.find(r => r.id === id);
-        const stale = p?.status !== 'ok';
-
         const header = new St.BoxLayout({style: `spacing: ${Math.round(LAYOUT.headerGap)}px;`});
-        const glyph = new St.DrawingArea({width: LAYOUT.glyphSize, height: LAYOUT.glyphSize, y_align: Clutter.ActorAlign.CENTER});
-        glyph.connect('repaint', area => {
-            const cr = area.get_context();
-            const [w, h] = area.get_surface_size();
-            drawGlyph(cr, id, w / 2, h / 2, LAYOUT.glyphSize);
-            cr.$dispose();
-        });
-        header.add_child(glyph);
-        header.add_child(this._label(`${NAMES[id]} Usage`, 'ledge-title'));
+        const glyphKey = module.cell().glyph;
+        if (glyphKey) {
+            const glyph = new St.DrawingArea({width: LAYOUT.glyphSize, height: LAYOUT.glyphSize, y_align: Clutter.ActorAlign.CENTER});
+            glyph.connect('repaint', area => {
+                const cr = area.get_context();
+                const [w, h] = area.get_surface_size();
+                drawGlyph(cr, glyphKey, w / 2, h / 2, LAYOUT.glyphSize);
+                cr.$dispose();
+            });
+            header.add_child(glyph);
+        }
+        header.add_child(this._label(module.heading(), 'ledge-title'));
         body.add_child(header);
-
-        if (this._settings.get_boolean('demo'))
-            body.add_child(this._label('Demo · sample readings', 'ledge-warning'));
-        if (!p) body.add_child(this._label('Reading usage…', 'ledge-muted'));
-        else {
-            if (stale || p.message)
-                body.add_child(this._label(`${p.status === 'stale' ? 'Stale · ' : ''}${p.message || 'Usage unavailable'}`, 'ledge-warning'));
-            for (const w of p.windows)
-                body.add_child(this._barRow(w, stale, id));
-            const metadata = new St.BoxLayout({vertical: true, style: 'spacing: 4px;'});
-            if (p.source) metadata.add_child(this._label(p.source, 'ledge-muted'));
-            if (p.updatedAt && Number.isFinite(Date.parse(p.updatedAt)))
-                metadata.add_child(this._label(`Read ${new Date(p.updatedAt).toLocaleString()}`, 'ledge-muted'));
-            if (metadata.get_n_children()) body.add_child(metadata);
-            else metadata.destroy();
-        }
-
-        const sessions = this._sessions(id);
-        if (sessions.length) {
-            const rule = new St.Widget({height: LAYOUT.hairline, style_class: 'ledge-hairline'});
-            body.add_child(rule);
-            for (const session of sessions.slice(0, 4)) {
-                const state = session.state === 'waiting' ? 'waiting' : session.state === 'busy' ? 'working' : 'idle';
-                body.add_child(this._splitRow(session.name, state, state === 'waiting' ? 'ledge-warning' : 'ledge-window-title'));
-                if (session.waitingFor || session.detail)
-                    body.add_child(this._label(session.waitingFor || session.detail, 'ledge-muted'));
-            }
-            if (sessions.length > 4)
-                body.add_child(this._label(`and ${sessions.length - 4} more`, 'ledge-muted'));
-        }
+        const moduleActions = module.card(body, this._cardUi());
 
         const actions = new St.BoxLayout({style_class: 'ledge-actions'});
-        for (const [label, action] of [['Refresh', () => this._refresh()], ['Settings', () => this.openPreferences()]]) {
+        for (const [label, action] of [...moduleActions, ['Settings', () => this.openPreferences()]]) {
             const button = new St.Button({label, style_class: 'ledge-action', can_focus: true, x_expand: true});
             button.connect('clicked', action);
             actions.add_child(button);
@@ -849,11 +732,12 @@ export default class Ledge extends Extension {
     disable() {
         if (!this._alive) return;
         this._alive = false;
-        this._cancelRead();
-        this._cancelActivity();
-        for (const timer of [this._poll, this._hideTimer, this._activityPoll, this._animation, this._motionTimer, this._orbTimer])
+        for (const module of this._modules.values()) module.stop();
+        this._modules.clear();
+        closeHttp();
+        for (const timer of [this._hideTimer, this._animation, this._motionTimer, this._orbTimer, this._changeIdle])
             if (timer) GLib.Source.remove(timer);
-        this._poll = this._hideTimer = this._activityPoll = this._animation = this._motionTimer = this._orbTimer = 0;
+        this._hideTimer = this._animation = this._motionTimer = this._orbTimer = this._changeIdle = 0;
         Main.wm.removeKeybinding('toggle-notch');
         if (this._monitorSignal) Main.layoutManager.disconnect(this._monitorSignal);
         if (this._workSignal) global.display.disconnect(this._workSignal);
@@ -869,8 +753,8 @@ export default class Ledge extends Extension {
         this._detail?.destroy();
         this._orbChrome?.destroy();
         this._host = this._detail = this._orb = this._orbChrome = this._settings = null;
-        this._readings = [];
-        this._activities = [];
+        this._moduleHost = null;
+        this._displayFractions = {};
         this._rings = [];
         this._keyboardOpen = false;
     }

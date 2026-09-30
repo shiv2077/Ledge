@@ -1,5 +1,4 @@
-import {remainingPercent} from './model.js';
-import {LAYOUT, PALETTE, PROVIDER_COLORS, hexToRgb, notchGeometry, clampUnit} from './design.js';
+import {LAYOUT, PALETTE, hexToRgb, notchGeometry, clampUnit} from './design.js';
 import {GLYPH_OUTLINES, GLYPH_SCALE, GLYPHS} from './glyphs.js';
 
 export function traceNotchPath(cr, w, h, edge) {
@@ -71,7 +70,8 @@ export function drawGlyph(cr, providerId, cx, cy, size) {
     cr.restore();
 }
 
-export function drawRing(cr, w, h, usedPercent, stale, phase, sessions, providerId) {
+// fraction is the filled share of the ring, 0..1, or null for no reading.
+export function drawRing(cr, w, h, fraction, cell, phase) {
     const cx = w / 2;
     const cy = h / 2;
     const radius = Math.min(w, h) / 2 - LAYOUT.trackStroke / 2;
@@ -82,20 +82,16 @@ export function drawRing(cr, w, h, usedPercent, stale, phase, sessions, provider
     cr.arc(cx, cy, radius, 0, Math.PI * 2);
     cr.stroke();
 
-    if (typeof usedPercent === 'number' && Number.isFinite(usedPercent)) {
-        const fraction = remainingPercent(usedPercent) / 100;
-        const color = hexToRgb(PROVIDER_COLORS[providerId] ?? PALETTE.textPrimary);
+    if (typeof fraction === 'number' && fraction > 0) {
         cr.setLineWidth(LAYOUT.progressStroke);
-        cr.setSourceRGBA(...color, stale ? 0.45 : 1);
-        if (fraction > 0) {
-            cr.arc(cx, cy, radius - (LAYOUT.trackStroke - LAYOUT.progressStroke) / 2,
-                -Math.PI / 2, -Math.PI / 2 + fraction * Math.PI * 2);
-            cr.stroke();
-        }
+        cr.setSourceRGBA(...hexToRgb(cell.accent ?? PALETTE.textPrimary), cell.stale ? 0.45 : 1);
+        cr.arc(cx, cy, radius - (LAYOUT.trackStroke - LAYOUT.progressStroke) / 2,
+            -Math.PI / 2, -Math.PI / 2 + Math.min(fraction, 1) * Math.PI * 2);
+        cr.stroke();
     }
 
-    const waiting = sessions?.some(s => s.state === 'waiting');
-    const busy = sessions?.some(s => s.state === 'busy');
+    const waiting = cell.sessions?.some(s => s.state === 'waiting');
+    const busy = cell.sessions?.some(s => s.state === 'busy');
     if (waiting || busy) {
         const inset = (LAYOUT.ringDiameter - LAYOUT.activityDiameter) / 2;
         const ir = radius - inset;
@@ -113,10 +109,10 @@ export function drawRing(cr, w, h, usedPercent, stale, phase, sessions, provider
         }
     }
 
-    drawGlyph(cr, providerId, cx, cy, LAYOUT.glyphSize);
+    if (cell.glyph) drawGlyph(cr, cell.glyph, cx, cy, LAYOUT.glyphSize);
 }
 
-export function drawProgressBar(cr, x, y, width, fraction, stale, providerId) {
+export function drawProgressBar(cr, x, y, width, fraction, stale, color) {
     const h = LAYOUT.barHeight;
     const track = hexToRgb(PALETTE.barTrack);
     cr.setSourceRGBA(...track, 1);
@@ -127,8 +123,7 @@ export function drawProgressBar(cr, x, y, width, fraction, stale, providerId) {
     cr.fill();
     if (typeof fraction === 'number' && fraction > 0) {
         const fillW = Math.max(h, width * Math.min(fraction, 1));
-        const color = hexToRgb(PROVIDER_COLORS[providerId] ?? PALETTE.textPrimary);
-        cr.setSourceRGBA(...color, stale ? 0.45 : 1);
+        cr.setSourceRGBA(...hexToRgb(color ?? PALETTE.textPrimary), stale ? 0.45 : 1);
         cr.newSubPath();
         cr.arc(x + h / 2, y + h / 2, h / 2, Math.PI / 2, Math.PI * 1.5);
         cr.arc(x + fillW - h / 2, y + h / 2, h / 2, -Math.PI / 2, Math.PI / 2);

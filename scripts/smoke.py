@@ -23,12 +23,13 @@ with tempfile.TemporaryDirectory(prefix='ledge-smoke-') as folder:
     for name in ['metadata.json', 'extension.js', 'model.js', 'design.js', 'draw.js', 'glyphs.js',
                  'prefs.js', 'stylesheet.css']:
         shutil.copy2(ROOT / name, extension / name)
-    for name in ['reader', 'schemas']:
+    for name in ['lib', 'modules', 'reader', 'schemas']:
         shutil.copytree(ROOT / name, extension / name)
     shutil.copy2(ROOT / 'tests/prefs-smoke.js', extension / 'prefs-smoke.js')
     (extension / 'extension.js').rename(extension / 'implementation.js')
     (extension / 'extension.js').write_text('''
 import Ledge from './implementation.js';
+import {usageSource} from './modules/usage.js';
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 import Shell from 'gi://Shell';
@@ -79,21 +80,21 @@ export default class Smoke extends Ledge {
         await delay(2200);
         Main.overview.hide();
         await delay(700);
-        assert(this._readings.length === 3, 'Three providers must render');
-        assert(this._readings.every(p => p.windows.length && p.status === 'ok'), 'Demo readings must succeed');
-        assert(this._activities.length === 3, 'Activity demo reader succeeds');
+        assert(usageSource().readings.length === 3, 'Three providers must render');
+        assert(usageSource().readings.every(p => p.windows.length && p.status === 'ok'), 'Demo readings must succeed');
+        assert(usageSource().activities.length === 3, 'Activity demo reader succeeds');
         await this.checkWorkspaceDismissal();
         // Wrapped provider warnings must participate in the card's natural height.
-        const savedReadings = this._readings;
-        const savedSessions = this._sessions;
-        this._sessions = () => []; // Keep background activity polling out of this layout fixture.
+        const savedReadings = usageSource().readings;
+        const savedSessions = usageSource().sessions;
+        usageSource().sessions = () => []; // Keep background activity polling out of this layout fixture.
         const warning = 'Claude Code credentials have expired; use Claude Code to refresh them';
         for (const edge of ['right', 'top', 'left', 'bottom']) {
             this._settings.set_string('edge', edge);
             await delay(100);
             const heights = [];
             for (const message of [warning, `${warning}. ${warning}.`, 'Usage unavailable']) {
-                this._readings = savedReadings.map(p => p.id === 'claude' ? {...p,
+                usageSource().readings = savedReadings.map(p => p.id === 'claude' ? {...p,
                     status: 'stale', message,
                 } : p);
                 this._showDetail('claude', true);
@@ -110,8 +111,8 @@ export default class Smoke extends Ledge {
             assert(heights[1] > heights[0] && heights[2] < heights[0],
                 `${edge}: popup grows and shrinks with wrapped content (${heights})`);
         }
-        this._readings = savedReadings;
-        this._sessions = savedSessions;
+        usageSource().readings = savedReadings;
+        usageSource().sessions = savedSessions;
         this._hideDetail();
         // Real pointer input exercises picking across the separately tracked
         // arc and notch actors, rather than assigning their hover flags.
@@ -259,7 +260,7 @@ export default class Smoke extends Ledge {
         this._settings.set_string('edge', 'bottom');
         this._settings.set_boolean('cursor', false);
         await delay(600);
-        assert(this._readings.length === 2 && !this._readings.some(p => p.id === 'cursor'), 'Disabled provider disappears');
+        assert(usageSource().readings.length === 2 && !usageSource().readings.some(p => p.id === 'cursor'), 'Disabled provider disappears');
         this._settings.set_boolean('always-show', false);
         await delay(500);
         assert(this._host.height <= 12, 'Bottom pill collapses');
@@ -319,10 +320,10 @@ export default class Smoke extends Ledge {
         await delay(80);
         assert(this._orbTimer, 'Exercise disable while the focused gear is moving');
         super.disable();
-        assert(!this._orbTimer && !this._motionTimer && !this._poll && !this._activityPoll && !this._animation && !this._process && !this._activityProcess && !this._host, 'Disable releases owned resources');
+        assert(!this._orbTimer && !this._motionTimer && !this._animation && !this._changeIdle && !usageSource() && !this._modules.size && !this._host, 'Disable releases owned resources');
         super.enable();
         await delay(600);
-        assert(this._readings.length === 2, 'Re-enable works');
+        assert(usageSource().readings.length === 2, 'Re-enable works');
         await this.checkWorkspaceDismissal();
         super.disable();
         GLib.file_set_contents(`${output}/result.json`, JSON.stringify({ok:true, placements, checks:['workspace switch dismissal and return','dismissed chrome visibility','wrapped warning padding and dynamic height across four edges','reference handle dimensions','pointer arc-to-gear transition','settings click','continuous unfold','animation actor identity','interrupted fold reversal','demo reader','four edges','tooltip','rapid popup switching','reduced motion','Overview dismissal','Overview collapse race','Overview visibility across four edges','always-show Overview','provider disable','collapse','preferences window','disable','re-enable']}));
