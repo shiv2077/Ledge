@@ -5,18 +5,8 @@ export const px = pixels => pixels * SCALE;
 const capRatio = 0.714;
 export const fontSize = capPixels => px(capPixels) / capRatio;
 
-export const PALETTE = {
-    notch: '#000000',
-    card: '#000000',
-    ringTrack: '#303030',
-    barTrack: '#2D2D2D',
-    ample: '#00FF88',
-    watch: '#F2FF00',
-    critical: '#FF3F00',
-    textPrimary: '#ffffff',
-    textSecondary: '#808080',
-};
-
+// Accents stay the same in every theme; a theme only adjusts their lightness
+// when contrast would be too low.
 export const PROVIDER_COLORS = {claude: '#E9956C', cursor: '#B59AFF', codex: '#63D9AE'};
 
 export const MODULE_COLORS = {power: '#FFC857', todo: '#7AB8FF', models: '#9BE564', github: '#C9D1D9', training: '#FF8FB1'};
@@ -85,27 +75,6 @@ export function shapeLength(cellCount, vertical = true) {
     return bodyLength(cellCount, vertical) + 2 * LAYOUT.curlRadius;
 }
 
-export function usageBand(fraction) {
-    if (fraction < 0.5) return 'ample';
-    if (fraction < 0.7) return 'watch';
-    if (fraction < 1.0) return 'critical';
-    return 'exhausted';
-}
-
-export function bandColor(band) {
-    return band === 'ample' ? PALETTE.ample : band === 'watch' ? PALETTE.watch : PALETTE.critical;
-}
-
-export function activityColor(state) {
-    if (state === 'busy') return PALETTE.ample;
-    if (state === 'waiting') return PALETTE.watch;
-    return PALETTE.textSecondary;
-}
-
-export function hexToRgb(hex) {
-    return [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255);
-}
-
 // Damped spring with velocity carried across pointer reversals. Response and
 // damping are tuned for the notch unfold; time is in seconds.
 export function springSample(value, target, velocity, time, response = 0.42, damping = 0.78) {
@@ -130,4 +99,54 @@ export function notchGeometry(depth, length) {
     const curl = Math.max(0, Math.min(LAYOUT.curlRadius, length / 2, depth - wanted));
     const corner = Math.max(0, Math.min(wanted, (length - 2 * curl) / 2));
     return {curl, corner};
+}
+
+// Pixel rectangles covering the notch shape drawn by traceNotchPath, in the
+// actor's own coordinates. Rows with the same span merge into one rectangle.
+// Used as a stencil clip so the glass blur follows the curls and corners.
+export function notchRects(edge, width, height) {
+    const vertical = edge === 'left' || edge === 'right';
+    const depth = vertical ? width : height;
+    const length = vertical ? height : width;
+    const {curl, corner} = notchGeometry(depth, length);
+    // Distance of the shape's inner boundary from the far (non-bezel) side.
+    const inset = along => {
+        const y = along + 0.5;
+        const fromEnd = Math.min(y, length - y);
+        // Concave flare: arc centred on the bezel line, one curl from the end.
+        if (fromEnd < curl) return depth - curl + Math.sqrt(Math.max(0, curl * curl - fromEnd * fromEnd));
+        // Convex rounded corner of the body.
+        if (fromEnd < curl + corner) return corner - Math.sqrt(Math.max(0, corner * corner - (curl + corner - fromEnd) ** 2));
+        return 0;
+    };
+    return mergeSpans(Math.round(length), inset, depth).map(({start, end, x0}) => {
+        const span = Math.round(depth) - x0;
+        if (edge === 'right') return [x0, start, span, end - start];
+        if (edge === 'left') return [0, start, span, end - start];
+        if (edge === 'top') return [start, 0, end - start, span];
+        return [start, x0, end - start, span];
+    }).filter(([, , w, h]) => w > 0 && h > 0);
+}
+
+// Rounded rectangle as pixel rectangles, for glass cards.
+export function roundedRectRects(width, height, radius) {
+    const r = Math.max(0, Math.min(radius, width / 2, height / 2));
+    const inset = along => {
+        const y = along + 0.5;
+        const fromEnd = Math.min(y, height - y);
+        return fromEnd < r ? r - Math.sqrt(Math.max(0, r * r - (r - fromEnd) ** 2)) : 0;
+    };
+    return mergeSpans(Math.round(height), inset, width).map(({start, end, x0}) =>
+        [x0, start, Math.round(width) - 2 * x0, end - start]).filter(([, , w, h]) => w > 0 && h > 0);
+}
+
+function mergeSpans(rows, inset, depth) {
+    const spans = [];
+    for (let along = 0; along < rows; along++) {
+        const x0 = Math.min(Math.round(depth), Math.max(0, Math.round(inset(along))));
+        const last = spans[spans.length - 1];
+        if (last && last.x0 === x0 && last.end === along) last.end = along + 1;
+        else spans.push({start: along, end: along + 1, x0});
+    }
+    return spans;
 }

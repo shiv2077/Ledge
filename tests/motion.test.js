@@ -31,3 +31,29 @@ test('reversing a live spring preserves position and velocity, then settles', ()
     assert.ok(Math.abs(end.velocity) < 0.01);
     assert.ok(springSample(0, 1, 0, 0.08).value < 0.6, 'Opening must pass through intermediate sizes');
 });
+
+test('glass clip rectangles follow the notch outline', async () => {
+    const {notchRects, roundedRectRects} = await import('../design.js');
+    const [w, h] = [70, 400];
+    const rects = notchRects('right', w, h);
+    const covered = (x, y) => rects.some(([rx, ry, rw, rh]) => x >= rx && x < rx + rw && y >= ry && y < ry + rh);
+    const {curl, corner} = notchGeometry(w, h);
+    const mid = Math.floor(curl / 2);
+    const flareX = w - curl + Math.sqrt(curl * curl - (mid + 0.5) ** 2);
+    assert.ok(covered(Math.ceil(flareX) + 1, mid) && !covered(Math.floor(flareX) - 2, mid), 'flare follows its arc');
+    assert.ok(!covered(0, 1), 'far side of the flare is outside');
+    assert.ok(covered(w - 1, curl + 1), 'bezel side inside after the flare');
+    assert.ok(!covered(0, curl + 1), 'rounded corner cuts the far side');
+    assert.ok(covered(0, h / 2) && covered(w - 1, h / 2), 'body spans the full depth');
+    assert.ok(covered(0, curl + corner + 1), 'full width once past the corner');
+    assert.ok(rects.length < 2 * (curl + corner) + 3, 'body rows merge into one rectangle');
+    // Mirrored and rotated edges cover the same area.
+    const area = list => list.reduce((sum, [, , rw, rh]) => sum + rw * rh, 0);
+    assert.equal(area(notchRects('left', w, h)), area(rects));
+    assert.equal(area(notchRects('top', h, w)), area(rects));
+    assert.equal(area(notchRects('bottom', h, w)), area(rects));
+    assert.ok(notchRects('top', h, w).every(([x, y]) => y === 0), 'top notch hangs from the top edge');
+    const card = roundedRectRects(300, 200, 16);
+    const cardCovered = (x, y) => card.some(([rx, ry, rw, rh]) => x >= rx && x < rx + rw && y >= ry && y < ry + rh);
+    assert.ok(!cardCovered(0, 0) && cardCovered(150, 0) && cardCovered(0, 100) && !cardCovered(299, 199));
+});

@@ -3,7 +3,7 @@ import GLib from 'gi://GLib';
 import {Module} from '../lib/module.js';
 import {run} from '../lib/subprocess.js';
 import {parseRepos, pullRequests, ciState, isGithubUrl} from '../model.js';
-import {MODULE_COLORS, PALETTE} from '../design.js';
+import {MODULE_COLORS} from '../design.js';
 
 const PR_FIELDS = 'number,title,url,repository';
 const RUN_FIELDS = 'status,conclusion,name,displayTitle,url,headBranch,workflowName';
@@ -89,7 +89,7 @@ export class GithubModule extends Module {
         const s = this._state;
         const failed = s?.runs.some(r => r.state === 'failed');
         return {...super.cell(), icon: 'events-merge-symbolic',
-            accent: failed ? PALETTE.critical : MODULE_COLORS.github, fraction: failed ? 1 : null,
+            accent: failed ? 'critical' : MODULE_COLORS.github, fraction: failed ? 1 : null,
             label: s && !s.fatal ? String(s.reviews.length) : '—',
             stale: !s || Boolean(s.error),
             accessibleName: `GitHub: ${!s ? 'loading' : s.fatal ? s.error : `${s.reviews.length} review requests${failed ? ', CI failing' : ''}`}`};

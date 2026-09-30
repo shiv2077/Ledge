@@ -20,7 +20,7 @@ with tempfile.TemporaryDirectory(prefix='ledge-smoke-') as folder:
     base = Path(folder)
     extension = base / 'data/gnome-shell/extensions/ledge@shiv2077'
     extension.mkdir(parents=True)
-    for name in ['metadata.json', 'extension.js', 'model.js', 'design.js', 'draw.js', 'glyphs.js',
+    for name in ['metadata.json', 'extension.js', 'model.js', 'design.js', 'themes.js', 'draw.js', 'glyphs.js',
                  'prefs.js', 'stylesheet.css']:
         shutil.copy2(ROOT / name, extension / name)
     for name in ['lib', 'modules', 'reader', 'schemas']:
@@ -30,6 +30,7 @@ with tempfile.TemporaryDirectory(prefix='ledge-smoke-') as folder:
     (extension / 'extension.js').write_text('''
 import Ledge from './implementation.js';
 import {usageSource} from './modules/usage.js';
+import {rgba} from './themes.js';
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 import Shell from 'gi://Shell';
@@ -120,6 +121,40 @@ export default class Smoke extends Ledge {
         }
         this._hideDetail();
     }
+    async checkThemes() {
+        // A striped backdrop makes glass visible in the screenshots.
+        const stripes = new St.Widget({x: 1400, y: 0, width: 520, height: 1080,
+            style: 'background-gradient-direction: horizontal; background-gradient-start: #ff3b30; background-gradient-end: #34c759;'});
+        for (let i = 0; i < 60; i++)
+            stripes.add_child(new St.Widget({x: 0, y: i * 18, width: 520, height: 9, style: 'background-color: #ffffff;'}));
+        global.window_group.add_child(stripes);
+        const cardOf = () => this._detail.get_first_child().get_children().find(child => child.has_style_class_name('ledge-detail'));
+        for (const theme of ['snow', 'nord', 'mocha', 'frosted-dark', 'frosted-light', 'system', 'custom', 'midnight']) {
+            this._settings.set_string('theme', theme);
+            await delay(500);
+            assert(this._theme.id === theme, `${theme} resolved`);
+            this._showDetail('todo', true);
+            await delay(300);
+            const card = cardOf();
+            const bg = card.get_theme_node().get_background_color();
+            const want = rgba(this._theme.card).map(v => Math.round(v * 255));
+            assert(Math.abs(bg.red - want[0]) <= 2 && Math.abs(bg.green - want[1]) <= 2 && Math.abs(bg.blue - want[2]) <= 2 && Math.abs(bg.alpha - want[3]) <= 2,
+                `${theme}: generated stylesheet wins, card ${[bg.red, bg.green, bg.blue, bg.alpha]} want ${want}`);
+            assert(Boolean(this._host.get_effect('ledge-blur')) === this._theme.glass && Boolean(card.get_effect('ledge-blur')) === this._theme.glass,
+                `${theme}: glass effects exactly when frosted`);
+            await this.capture(`theme-${theme}`);
+        }
+        // An open card follows a theme change without closing.
+        this._showDetail('power', true);
+        await delay(200);
+        this._settings.set_string('theme', 'snow');
+        await delay(400);
+        assert(this._detail.visible && this._selected === 'power', 'Open card survives a theme change');
+        this._settings.set_string('theme', 'midnight');
+        await delay(400);
+        this._hideDetail();
+        stripes.destroy();
+    }
     async runSmoke() {
         await delay(2200);
         Main.overview.hide();
@@ -128,6 +163,7 @@ export default class Smoke extends Ledge {
         assert(usageSource().readings.every(p => p.windows.length && p.status === 'ok'), 'Demo readings must succeed');
         assert(usageSource().activities.length === 3, 'Activity demo reader succeeds');
         await this.checkWidgets();
+        await this.checkThemes();
         await this.checkWorkspaceDismissal();
         // Wrapped provider warnings must participate in the card's natural height.
         const savedReadings = usageSource().readings;
@@ -356,7 +392,11 @@ export default class Smoke extends Ledge {
         Main.overview.hide();
         await delay(400);
         assert(this._orb.visible && !this._detail.visible, 'Always-show restores without reopening a popup');
+        this._settings.set_string('theme', 'frosted-dark');
         const prefs = Gio.Subprocess.new(['/usr/bin/gjs', '-m', `${this.path}/prefs-smoke.js`, this.path], Gio.SubprocessFlags.NONE);
+        await delay(1000);
+        await this.capture('prefs');
+        this._settings.set_string('theme', 'midnight');
         await new Promise((resolve, reject) => prefs.wait_check_async(null, (p, result) => {
             try { p.wait_check_finish(result); resolve(); } catch (error) { reject(error); }
         }));

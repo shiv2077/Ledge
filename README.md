@@ -50,6 +50,27 @@ The installer backs up any existing install under `~/.local/share/ledge/backups/
 
 Usage rings show quota **left**. A dash means no reading and never stands in for 0%. Dim rings mark stale readings. An inner moving arc means a session is working; amber means it is waiting for you. Codex activity is estimated from recent local writes.
 
+## Appearance
+
+Preferences open with an Appearance section. Pick a theme from the list; each shows a color swatch.
+
+| Theme | Look |
+| --- | --- |
+| Midnight | Pure black. The default |
+| Graphite | Soft dark grey |
+| Nord, Catppuccin Mocha, Dracula | The well-known palettes |
+| Ocean | Deep navy |
+| Snow | Clean light theme |
+| Frosted Dark, Frosted Light | Glass: blurs what is behind the notch and cards, with a tint, a bright rim and a soft shadow |
+| System | Follows Ubuntu's light or dark style and the Yaru accent color, live |
+| Custom | Your own notch, card, text and highlight colors and background opacity |
+
+Frosted themes add sliders for blur strength, tint opacity and backdrop brightness. Custom adds color pickers and an opacity slider. Changes apply immediately, including to an open card.
+
+Every theme keeps text readable: contrast is checked for each theme, and Custom and glass settings are held to the same rule. A translucent custom background is made more opaque when text would otherwise be hard to read. Claude, Cursor, Codex and widget colors stay the same everywhere; on a theme where one would be hard to see, only its lightness changes.
+
+The glass blur follows the notch's exact outline, curls and rounded corners included. It works alongside Blur My Shell.
+
 ## Where readings come from
 
 Ledge only talks to the network through the usage reader below, `gh`, and localhost. It keeps no tokens and sends no telemetry.

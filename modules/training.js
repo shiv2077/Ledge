@@ -4,7 +4,7 @@ import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
 import {Module} from '../lib/module.js';
 import {readText, ensureDir, dataDir} from '../lib/files.js';
 import {parseRun, runState, runProgress, formatLoss, formatDuration} from '../model.js';
-import {MODULE_COLORS, PALETTE} from '../design.js';
+import {MODULE_COLORS} from '../design.js';
 
 const STALL_CHECK_SECONDS = 60;
 const MAX_RUNS = 50;
@@ -140,7 +140,7 @@ export class TrainingModule extends Module {
         const run = this._active();
         const state = run ? runState(run, Date.now() / 1000, this._stallSeconds()) : null;
         return {...super.cell(), icon: ICON, fraction: run ? runProgress(run) : null,
-            accent: state === 'stalled' ? PALETTE.watch : MODULE_COLORS.training,
+            accent: state === 'stalled' ? 'watch' : MODULE_COLORS.training,
             label: run ? formatLoss(run.loss) : '—', stale: state === 'stalled',
             accessibleName: run ? `Training ${run.name}: ${state}, loss ${formatLoss(run.loss)}` : 'Training: no active run'};
     }

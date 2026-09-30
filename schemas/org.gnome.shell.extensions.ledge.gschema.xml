@@ -1,5 +1,14 @@
 <schemalist>
   <schema id="org.gnome.shell.extensions.ledge" path="/org/gnome/shell/extensions/ledge/">
+    <key name="theme" type="s"><default>'midnight'</default><choices><choice value="midnight"/><choice value="graphite"/><choice value="nord"/><choice value="mocha"/><choice value="dracula"/><choice value="ocean"/><choice value="snow"/><choice value="frosted-dark"/><choice value="frosted-light"/><choice value="system"/><choice value="custom"/></choices><summary>Color theme</summary></key>
+    <key name="custom-background" type="s"><default>'#000000'</default><summary>Custom theme notch background, #rrggbb</summary></key>
+    <key name="custom-card" type="s"><default>'#1c1c1e'</default><summary>Custom theme card background, #rrggbb</summary></key>
+    <key name="custom-text" type="s"><default>'#ffffff'</default><summary>Custom theme text color, #rrggbb</summary></key>
+    <key name="custom-highlight" type="s"><default>'#3584e4'</default><summary>Custom theme highlight color, #rrggbb</summary></key>
+    <key name="custom-opacity" type="d"><default>1.0</default><range min="0.3" max="1.0"/><summary>Custom theme background opacity</summary></key>
+    <key name="glass-blur" type="i"><default>30</default><range min="0" max="100"/><summary>Frosted glass blur radius in pixels</summary></key>
+    <key name="glass-tint" type="d"><default>0.7</default><range min="0.55" max="0.95"/><summary>Frosted glass tint opacity</summary></key>
+    <key name="glass-brightness" type="d"><default>0.85</default><range min="0.5" max="1.0"/><summary>Frosted glass backdrop brightness</summary></key>
     <key name="edge" type="s"><default>'right'</default><choices><choice value="top"/><choice value="right"/><choice value="bottom"/><choice value="left"/></choices><summary>Screen edge</summary></key>
     <key name="monitor" type="i"><default>-1</default><range min="-1" max="32"/><summary>Monitor index, or -1 for primary</summary></key>
     <key name="always-show" type="b"><default>false</default><summary>Keep usage rings expanded</summary></key>

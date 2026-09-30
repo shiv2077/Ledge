@@ -21,7 +21,7 @@ Ledge is a GNOME Shell extension: a notch on a screen edge whose cells are widge
 4. Every module has an enable switch. A disabled module does no reads and no polling.
 5. Every data source fails gracefully into a visible idle or error state, never a crash.
 6. `disable()` cleans up everything: timers, file monitors, subprocesses, signals, D-Bus proxies. Repeated enable/disable must not leak.
-7. Visual style comes from `design.js`. Do not change `SCALE` or the `.ledge-percent` font size.
+7. Sizes and spacing come from `design.js`, colors from theme tokens in `themes.js`. Never hardcode a UI color. Do not change `SCALE` or the `.ledge-percent` font size.
 8. Ledge is an original product. Do not name any predecessor project anywhere except `THIRD_PARTY_LICENSES`, which is never edited. This includes commit messages: never say "rebrand", "rename from", "port" or refer to earlier code.
 9. No dependencies beyond GNOME Shell 46 and Python 3.
 
@@ -41,8 +41,11 @@ Ledge is a GNOME Shell extension: a notch on a screen edge whose cells are widge
 | `modules/github.js` | `gh` search and run list with `--json`; exit 4 means logged out |
 | `modules/training.js` | `Gio.FileMonitor` on `runs/`, stall timer, notifications on the shell system source |
 | `tools/ledge_status.py` | Dependency-free writer for training status files |
+| `themes.js` | Theme tokens, built-in themes, system and custom resolution, contrast math, generated stylesheet. Pure, Node-tested |
+| `lib/appearance.js` | Runtime theme: watches appearance keys and `org.gnome.desktop.interface`, loads the generated stylesheet |
+| `lib/glass.js` | `setGlass(actor, shape, params)`: shape-clipped `Shell.BlurEffect` |
 | `model.js` | Pure helpers, tested with Node |
-| `design.js` | Palette, layout tokens, spring motion |
+| `design.js` | Layout tokens, accents, spring motion, notch and rounded-rect clip rectangles |
 | `draw.js` | Cairo drawing for notch, rings, bars, tail, settings orb |
 | `glyphs.js` | Provider glyph outlines |
 | `prefs.js` | Adwaita preferences |
@@ -74,13 +77,26 @@ Module accents live in `MODULE_COLORS` in `design.js`. Notifications go on `Mess
 
 Fixed cell order: claude, cursor, codex, power, todo, models, github, training. Modules use `lib/subprocess.js` and `lib/http.js` rather than their own process or HTTP code. In GJS, `Gio.Cancellable.connect(fn)` is `g_cancellable_connect`, not the GObject signal connect.
 
+## Theme system
+
+Tokens (`themes.js`): `notch`, `card`, `control`, `textPrimary`, `textSecondary`, `border`, `highlight`, `shadow`, `ringTrack`, `barTrack`, `ample`, `watch`, `critical`, `warning`; derived `controlHover`, `controlFocus`, `selection`, `textDim`. Colors are `#rrggbb` or `#rrggbbaa`.
+
+- `resolveTheme({theme, custom, glass, desktop})` returns the tokens plus `glass`, `glassParams`, `light` and `accent(color, 'notch' | 'card')`. Text is fitted to 4.5:1 and accents to 3:1 against every background it can land on: over black and white desktops for translucent themes, and over tint-on-black and tint-on-white for glass. Accents only change lightness. `tests/themes.test.js` enforces this for every theme; a new theme must pass it without runtime correction.
+- Midnight reproduces the original colors exactly and is the default.
+- System: `color-scheme` plus the Yaru variant in `gtk-theme` (for example `Yaru-blue-dark`), or `accent-color` when the schema has it (checked through `Gio.SettingsSchemaSource`, never assumed). The accent drives `highlight` and tints `ringTrack`.
+- Custom: four `custom-*` colors and `custom-opacity`. The opacity is raised automatically until text can read over both a black and a white desktop.
+- Runtime: `Appearance` resolves on any `theme`, `custom-*` or `glass-*` change, or desktop change in System mode. It calls `_applyTheme` synchronously, which re-applies glass, re-renders cells, repaints the Cairo areas and rebuilds an open card. Then it writes `~/.cache/ledge/theme-<time>.css` and swaps it in. St lets the extension's own `stylesheet.css` win specificity ties, so generated selectors double each class (`.a.a`). `stylesheet.css` keeps sizes and the Midnight colors as a fallback.
+- Cairo drawing takes colors from `this._theme`; modules return accents as hex or token names (`'critical'`, `'watch'`) and the host resolves them.
+
+Frosted glass (`lib/glass.js`): three effects on the actor, outermost first: a stencil region clip in the actor's exact shape (`Mtk.Region` of pixel rectangles from `notchRects` / `roundedRectRects`, in framebuffer coordinates of the view being painted), `Shell.BlurEffect` in `BACKGROUND` mode (GNOME 46 properties: `radius`, `brightness`, `mode`), and a clip end that pops the clip so the actor's own tint, rim and shadow paint unclipped. A shader mask would need an offscreen redirect, where a background blur only sees an empty buffer. For the same reason glass cards skip the opacity fade. `Cogl.Framebuffer.push_region_clip` takes an `Mtk.Region`, and `Clutter.StageView.get_layout` takes a caller-allocated `Mtk.Rectangle`.
+
 ## Testing workflow
 
-- `make test` must pass: Node tests, Python unittest, strict schema compile, `node --check` on every JS file.
+- `make test` must pass: Node tests (including `tests/themes.test.js` contrast checks), Python unittest, strict schema compile, `node --check` on every JS file.
 - `make smoke` runs a real headless GNOME Shell with demo data and must pass. It and the GJS helper test run under `CLEAN_ENV` because the VS Code snap injects libraries and an old `GSETTINGS_SCHEMA_DIR`; run any ad hoc `gjs` or `gnome-shell` the same way.
 - `tests/helpers.gjs.js` covers `lib/subprocess.js`, `lib/http.js` and `lib/files.js` (timeouts, cancel, leaks, localhost refusal, redirects, atomic writes). `tests/widgets.test.js` covers the pure widget helpers in `model.js`; `tests/test_ledge_status.py` the Python helper.
-- The smoke test runs every widget in a real shell: todo typing, training file events, every card, then disable and re-enable. Its shell log (`.smoke/shell.log`) must have no JS errors or Clutter criticals.
-- The owner tests with `make reload` (schema and settings) or `make nested` / a fresh login (JS changes, since GJS caches modules), and watches `journalctl --user -f -o cat /usr/bin/gnome-shell`.
+- The smoke test runs every widget in a real shell: todo typing, training file events, every card, every theme over a striped backdrop (checking the generated stylesheet wins and glass is present exactly for frosted themes), the prefs window, then disable and re-enable. Screenshots land in `.smoke/`. Its shell log (`.smoke/shell.log`) must have no JS errors or Clutter criticals.
+- The owner tests with `make reload` (schema and settings) or `make nested` / a fresh login (JS changes, since GJS caches modules), and watches `journalctl --user -f -o cat /usr/bin/gnome-shell`. Try glass changes in `make nested` first.
 - Work one phase at a time. Stop after each phase with exact test steps and wait for confirmation.
 - Commit only after the owner confirms a phase works. Conventional, clear messages. No co-author trailers or AI attribution anywhere.
 - When the owner pastes journalctl output, fix the root cause.

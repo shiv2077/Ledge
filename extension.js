@@ -10,6 +10,9 @@ import {position} from './model.js';
 import {LAYOUT, shapeLength, springSample, clampUnit, notchGeometry} from './design.js';
 import {drawFilledPath, traceNotchPath, drawRing, drawProgressBar, drawTooltipTail, drawGlyph, drawSettings, drawSettingsGlyph} from './draw.js';
 import {closeHttp} from './lib/http.js';
+import {Appearance} from './lib/appearance.js';
+import {setGlass} from './lib/glass.js';
+import {notchRects, roundedRectRects} from './design.js';
 import {USAGE_MODULES} from './modules/usage.js';
 import {PowerModule} from './modules/power.js';
 import {TodoModule} from './modules/todo.js';
@@ -28,6 +31,9 @@ export default class Ledge extends Extension {
         this._rings = [];
         this._displayFractions = {};
         this._settings = this.getSettings();
+        // Resolved before any actor exists; later changes redraw in place, so
+        // an open card follows the theme. Its keys are skipped below.
+        this._appearance = new Appearance(this._settings, theme => this._applyTheme(theme));
         this._moduleHost = {
             settings: this._settings,
             path: this.path,
@@ -67,14 +73,14 @@ export default class Ledge extends Extension {
             x_align: Clutter.ActorAlign.CENTER, y_align: Clutter.ActorAlign.CENTER});
         this._orbGlyph.connect('repaint', area => {
             const cr = area.get_context();
-            drawSettingsGlyph(cr, area.get_surface_size()[0]);
+            drawSettingsGlyph(cr, area.get_surface_size()[0], this._theme.textPrimary);
             cr.$dispose();
         });
         this._orbGlyph.set_pivot_point(0.5, 0.5);
         this._orb.set_child(this._orbGlyph);
         this._orbDrawing.connect('repaint', area => {
             const cr = area.get_context();
-            drawSettings(cr, area.get_surface_size()[0], this._edge(), this._orbT, this._orbReveal);
+            drawSettings(cr, area.get_surface_size()[0], this._edge(), this._orbT, this._orbReveal, this._theme.notch);
             cr.$dispose();
         });
 
@@ -103,7 +109,7 @@ export default class Ledge extends Extension {
             cr.setOperator(3);
             cr.paint();
             cr.setOperator(2);
-            drawFilledPath(cr, traceNotchPath, w, h, this._edge());
+            drawFilledPath(cr, traceNotchPath, w, h, this._edge(), this._theme.notch, this._theme.glass ? this._theme.border : null);
             cr.$dispose();
         });
         this._host.connect('notify::allocation', () => this._place());
@@ -135,7 +141,9 @@ export default class Ledge extends Extension {
         if (Main.overview.visibleTarget) this._onOverviewShowing();
 
         this._settingsSignal = this._settings.connect('changed', (_s, key) => {
+            if (/^(theme|custom-|glass-)/.test(key)) return;
             this._hideDetail();
+            if (key === 'edge') this._applyGlass();
             this._expanded = this._settings.get_boolean('always-show');
             this._expandTarget = this._expanded ? 1 : 0;
             if (MODULES.some(M => M.id === key)) this._syncModules();
@@ -156,9 +164,26 @@ export default class Ledge extends Extension {
                 else this._hideDetail();
             });
 
+        this._applyGlass();
         this._syncModules();
         this._render();
         this._animateMotion();
+    }
+
+    // Glass on the notch, clipped to its current shape, or none.
+    _applyGlass() {
+        if (!this._host) return;
+        const edge = this._edge();
+        setGlass(this._host, (w, h) => notchRects(edge, w, h), this._theme.glassParams);
+    }
+
+    _applyTheme(theme) {
+        this._theme = theme;
+        if (!this._host) return;
+        this._applyGlass();
+        this._render();
+        for (const area of [this._notchBg, this._orbDrawing, this._orbGlyph]) area.queue_repaint();
+        if (!this._overviewActive() && this._detail.visible && this._selected) this._showDetail(this._selected, true);
     }
 
     // Starts modules whose key is on and stops the rest.
@@ -325,17 +350,25 @@ export default class Ledge extends Extension {
         const needsMotion = this._expandT > 0.5 || this._orbHover ||
             [...this._modules.values()].some(m => m.cell().animating);
         if (!needsMotion || !St.Settings.get().enable_animations) return;
+        // Stops once rings have eased to their values and nothing spins, so an
+        // idle expanded notch (and any glass behind it) is not repainted.
         this._animation = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
+            let moving = false;
             for (const [id, module] of this._modules) {
-                const target = module.cell().fraction;
-                if (typeof target === 'number') {
-                    const cur = this._displayFractions[id] ?? target;
-                    this._displayFractions[id] = cur + (target - cur) * 0.12;
+                const cell = module.cell();
+                moving ||= cell.animating;
+                if (typeof cell.fraction === 'number') {
+                    const cur = this._displayFractions[id] ?? cell.fraction;
+                    const next = cur + (cell.fraction - cur) * 0.12;
+                    const settled = Math.abs(cell.fraction - next) < 0.001;
+                    this._displayFractions[id] = settled ? cell.fraction : next;
+                    moving ||= !settled;
                 }
             }
-            this._notchBg.queue_repaint();
             for (const ring of this._rings) ring.queue_repaint();
-            return GLib.SOURCE_CONTINUE;
+            if (moving) return GLib.SOURCE_CONTINUE;
+            this._animation = 0;
+            return GLib.SOURCE_REMOVE;
         });
     }
 
@@ -502,6 +535,7 @@ export default class Ledge extends Extension {
 
         enabled.forEach(id => {
             const info = this._modules.get(id).cell();
+            const cellTheme = {...info, accent: this._theme.accent(info.accent)};
             // The last shown value persists while a reading is briefly missing.
             if (typeof info.fraction === 'number') this._displayFractions[id] ??= info.fraction;
 
@@ -519,7 +553,7 @@ export default class Ledge extends Extension {
             ring.connect('repaint', area => {
                 const cr = area.get_context();
                 const [w, h] = area.get_surface_size();
-                drawRing(cr, w, h, this._displayFractions[id] ?? info.fraction, info, GLib.get_monotonic_time() / 1000000);
+                drawRing(cr, w, h, this._displayFractions[id] ?? info.fraction, cellTheme, GLib.get_monotonic_time() / 1000000, this._theme);
                 cr.$dispose();
             });
             this._rings.push(ring);
@@ -620,7 +654,7 @@ export default class Ledge extends Extension {
         bar.connect('repaint', area => {
             const cr = area.get_context();
             const [w] = area.get_surface_size();
-            drawProgressBar(cr, 0, 1, w, fraction, stale, color);
+            drawProgressBar(cr, 0, 1, w, fraction, stale, this._theme.accent(color, 'card'), this._theme.barTrack);
             cr.$dispose();
         });
         block.add_child(bar);
@@ -704,7 +738,7 @@ export default class Ledge extends Extension {
         tail.connect('repaint', area => {
             const cr = area.get_context();
             const [w, h] = area.get_surface_size();
-            drawTooltipTail(cr, w, h, direction);
+            drawTooltipTail(cr, w, h, direction, this._theme.card);
             cr.$dispose();
         });
 
@@ -722,7 +756,7 @@ export default class Ledge extends Extension {
             glyph.connect('repaint', area => {
                 const cr = area.get_context();
                 const [w, h] = area.get_surface_size();
-                drawGlyph(cr, glyphKey, w / 2, h / 2, LAYOUT.glyphSize);
+                drawGlyph(cr, glyphKey, w / 2, h / 2, LAYOUT.glyphSize, this._theme.textPrimary);
                 cr.$dispose();
             });
             header.add_child(glyph);
@@ -747,7 +781,12 @@ export default class Ledge extends Extension {
             wrap.add_child(card);
         }
         this._detail.add_child(wrap);
-        if ((switching || entering) && St.Settings.get().enable_animations) {
+        // Glass cards skip the fade: a translucent parent is painted offscreen,
+        // where a background blur would only see an empty buffer.
+        if (this._theme.glass) {
+            setGlass(card, (w, h) => roundedRectRects(w, h, card.get_theme_node().get_border_radius(St.Corner.TOPLEFT)),
+                this._theme.glassParams);
+        } else if ((switching || entering) && St.Settings.get().enable_animations) {
             wrap.opacity = 150;
             wrap.ease({opacity: 255, duration: 160, mode: Clutter.AnimationMode.EASE_OUT_CUBIC});
         }
@@ -827,6 +866,9 @@ export default class Ledge extends Extension {
         this._focusSignal = 0;
         if (this._detailMounted) Main.layoutManager.removeChrome(this._detail);
         Main.layoutManager.removeChrome(this._orbChrome);
+        this._appearance?.destroy();
+        this._appearance = null;
+        if (this._host) setGlass(this._host, null, null);
         this._host?.destroy();
         this._detail?.destroy();
         this._orbChrome?.destroy();
