@@ -6,11 +6,16 @@ Built for **Ubuntu 24.04** and **GNOME Shell 46** on Wayland.
 
 ## Widgets
 
-| Widget | Shows |
-| --- | --- |
-| Claude Code, Cursor, Codex | Usage left in each limit window, reset times, and live session activity |
+| Widget | Cell | Card |
+| --- | --- | --- |
+| Claude Code, Cursor, Codex | Usage left in the current window | Every limit window, reset times, live session activity |
+| Power | Current power profile | Power Saver, Balanced and Performance; click one to switch |
+| Todo | Open todos | Add with the entry and Enter, tick done, delete; done items sink to the bottom |
+| Local models | Loaded model count; the ring is GPU memory in use | Ollama and LM Studio models with size and VRAM, and a speed test per Ollama model |
+| GitHub | Review requests; turns red when a watched repository's latest CI run failed | Review requests, your open pull requests, latest CI run per watched repository |
+| Training | Active run's epoch progress, with its loss as the label | Recent runs with epoch, loss, ETA and state |
 
-Every widget can be switched off in preferences. A switched-off widget does no reads at all, and the notch shortens to fit.
+Every widget can be switched off in preferences. A switched-off widget does no reads and no polling, and the notch shortens to fit. With all widgets on, a side-edge notch is about 910 px tall; on a smaller screen, switch some off or use the top or bottom edge.
 
 ## Requirements
 
@@ -38,14 +43,40 @@ The installer backs up any existing install under `~/.local/share/ledge/backups/
 ## Use
 
 - Hover the narrow pill on the screen edge to expand it.
-- Hover or click a cell for its card. **Refresh** requests a new reading.
+- Hover or click a cell for its card. **Refresh** requests a new reading. Clicking the todo cell puts the cursor in its entry.
 - Hover the curve under the notch for the settings gear.
 - **Super+Shift+L** opens and focuses the notch. Tab moves between controls. Escape closes it.
 - **Demo readings** in preferences previews the notch without reading any accounts.
 
 Usage rings show quota **left**. A dash means no reading and never stands in for 0%. Dim rings mark stale readings. An inner moving arc means a session is working; amber means it is waiting for you. Codex activity is estimated from recent local writes.
 
-## Where usage readings come from
+## Where readings come from
+
+Ledge only talks to the network through the usage reader below, `gh`, and localhost. It keeps no tokens and sends no telemetry.
+
+- **Power:** power-profiles-daemon over the system D-Bus (`org.freedesktop.UPower.PowerProfiles`, or the older `net.hadess.PowerProfiles`). Changes made in Quick Settings show up immediately.
+- **Todo:** `~/.local/share/ledge/todos.json`, replaced atomically on every change. An unreadable file is kept as `todos.json.bad-<time>` and the list starts empty.
+- **Local models:** `http://127.0.0.1:11434/api/ps` (Ollama) and `http://127.0.0.1:1234/api/v1/models`, falling back to `/api/v0/models` (LM Studio), every 15 seconds. Total GPU memory is read once from `nvidia-smi`. **Measure speed** sends one short non-streaming prompt to Ollama and reports `eval_count / eval_duration`.
+- **GitHub:** the `gh` CLI with its own sign-in, every 5 minutes: `gh search prs` for review requests and your pull requests, and `gh run list` for each watched repository (set in preferences as `owner/name`). A CI run that is queued or in progress counts as running; only a completed run with a failing conclusion turns the cell red.
+- **Training:** JSON files in `~/.local/share/ledge/runs/`, watched with a file monitor. A running job with no update for 10 minutes is marked stalled. A notification is sent when a run finishes, crashes or stalls.
+
+### Reporting training progress
+
+Copy `tools/ledge_status.py` next to your training script (it needs only the Python standard library):
+
+```python
+from ledge_status import RunStatus
+
+with RunStatus("resnet-cifar", total_epochs=10) as status:
+    for epoch in range(1, 11):
+        for step, batch in enumerate(loader):
+            loss = train_step(batch)
+            status.update(epoch=epoch, step=step, loss=loss, eta_seconds=eta)
+```
+
+The file is rewritten atomically every 10 updates (`every=` changes that). Leaving the block marks the run done; an exception marks it crashed. Outside a `with` block, call `status.done()` or `status.crashed()` yourself.
+
+### Coding usage
 
 | Provider | Source |
 | --- | --- |

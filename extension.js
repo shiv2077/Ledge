@@ -11,9 +11,14 @@ import {LAYOUT, shapeLength, springSample, clampUnit, notchGeometry} from './des
 import {drawFilledPath, traceNotchPath, drawRing, drawProgressBar, drawTooltipTail, drawGlyph, drawSettings, drawSettingsGlyph} from './draw.js';
 import {closeHttp} from './lib/http.js';
 import {USAGE_MODULES} from './modules/usage.js';
+import {PowerModule} from './modules/power.js';
+import {TodoModule} from './modules/todo.js';
+import {ModelsModule} from './modules/models.js';
+import {GithubModule} from './modules/github.js';
+import {TrainingModule} from './modules/training.js';
 
 // Cell order in the notch.
-const MODULES = [...USAGE_MODULES];
+const MODULES = [...USAGE_MODULES, PowerModule, TodoModule, ModelsModule, GithubModule, TrainingModule];
 
 export default class Ledge extends Extension {
     enable() {
@@ -119,6 +124,10 @@ export default class Ledge extends Extension {
             this._keyboardOpen = false;
             this._hideDetail();
             this._hover();
+        });
+        // Typing in a card holds the notch open; focus moving elsewhere releases it.
+        this._focusSignal = global.stage.connect('notify::key-focus', () => {
+            if (this._detail?.visible && !this._detail.contains(global.stage.get_key_focus())) this._hover();
         });
         this._overviewShowingSignal = Main.overview.connect('showing', () => this._onOverviewShowing());
         this._overviewHidingSignal = Main.overview.connect('hiding', () => this._onOverviewHiding());
@@ -457,7 +466,8 @@ export default class Ledge extends Extension {
         } else {
             this._hideTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 300, () => {
                 this._hideTimer = 0;
-                if (!this._keyboardOpen && !this._host.hover && !this._detail.hover && !this._orb.hover) {
+                const typing = this._detail.visible && this._detail.contains(global.stage.get_key_focus());
+                if (!this._keyboardOpen && !typing && !this._host.hover && !this._detail.hover && !this._orb.hover) {
                     this._hideDetail();
                     this._expanded = this._settings.get_boolean('always-show');
                     this._expandTarget = this._expanded ? 1 : 0;
@@ -513,12 +523,25 @@ export default class Ledge extends Extension {
                 cr.$dispose();
             });
             this._rings.push(ring);
-            inner.add_child(ring);
+            if (info.icon) {
+                const holder = new St.Widget({layout_manager: new Clutter.BinLayout(),
+                    x_align: Clutter.ActorAlign.CENTER, y_align: Clutter.ActorAlign.CENTER});
+                holder.add_child(ring);
+                holder.add_child(new St.Icon({icon_name: info.icon, icon_size: Math.round(LAYOUT.glyphSize),
+                    style_class: 'ledge-cell-icon', x_align: Clutter.ActorAlign.CENTER, y_align: Clutter.ActorAlign.CENTER}));
+                inner.add_child(holder);
+            } else {
+                inner.add_child(ring);
+            }
             inner.add_child(new St.Label({text: info.label, style_class: 'ledge-percent', x_align: Clutter.ActorAlign.CENTER, y_align: Clutter.ActorAlign.CENTER}));
             button.set_child(inner);
             button.connect('notify::hover', () => { if (button.hover && !this._overviewActive()) this._showDetail(id); });
             button.connect('key-focus-in', () => { if (!this._overviewActive()) this._showDetail(id); });
-            button.connect('clicked', () => { if (!this._overviewActive()) this._showDetail(id); });
+            button.connect('clicked', () => {
+                if (this._overviewActive()) return;
+                this._showDetail(id);
+                if (this._autofocus?.get_stage()) this._autofocus.grab_key_focus();
+            });
             cell.add_child(button);
             this._stack.add_child(cell);
         });
@@ -612,6 +635,43 @@ export default class Ledge extends Extension {
             bar: (...args) => this._barRow(...args),
             box: style => new St.BoxLayout({vertical: true, style}),
             hairline: () => new St.Widget({height: LAYOUT.hairline, style_class: 'ledge-hairline'}),
+            button: (label, callback, style = 'ledge-action') => {
+                const button = new St.Button({label, style_class: style, can_focus: true});
+                button.connect('clicked', () => callback());
+                return button;
+            },
+            iconButton: (iconName, accessibleName, callback) => {
+                const button = new St.Button({style_class: 'ledge-icon-button', can_focus: true, accessible_name: accessibleName,
+                    child: new St.Icon({icon_name: iconName, icon_size: 14}), y_align: Clutter.ActorAlign.CENTER});
+                button.connect('clicked', () => callback());
+                return button;
+            },
+            // A list row: leading actors, optional icon, title, muted detail, trailing actors.
+            // With onClick the whole row is one focusable button instead.
+            row: (title, {icon = null, detail = '', active = false, dim = false, onClick = null, leading = [], trailing = []} = {}) => {
+                const box = new St.BoxLayout({style: 'spacing: 8px;', x_expand: true});
+                for (const actor of leading) box.add_child(actor);
+                if (icon) box.add_child(new St.Icon({icon_name: icon, icon_size: 16, y_align: Clutter.ActorAlign.CENTER}));
+                const text = new St.BoxLayout({vertical: true, x_expand: true, y_align: Clutter.ActorAlign.CENTER});
+                text.add_child(this._label(title, dim ? 'ledge-row-title ledge-dim' : 'ledge-row-title'));
+                if (detail) text.add_child(this._label(detail, 'ledge-muted'));
+                box.add_child(text);
+                if (active) box.add_child(new St.Icon({icon_name: 'object-select-symbolic', icon_size: 14, y_align: Clutter.ActorAlign.CENTER}));
+                for (const actor of trailing) box.add_child(actor);
+                if (!onClick) return box;
+                const button = new St.Button({style_class: active ? 'ledge-row ledge-row-active' : 'ledge-row',
+                    can_focus: true, x_expand: true, child: box, accessible_name: title});
+                button.connect('clicked', () => onClick());
+                return button;
+            },
+            // Text entry; Enter calls onActivate(text, entry).
+            entry: (hint, onActivate) => {
+                const entry = new St.Entry({hint_text: hint, style_class: 'ledge-entry', can_focus: true, x_expand: true});
+                entry.clutter_text.connect('activate', () => onActivate(entry.get_text(), entry));
+                return entry;
+            },
+            // The control a click on the cell focuses, such as an entry.
+            autofocus: actor => { this._autofocus = actor; },
         };
     }
 
@@ -622,8 +682,14 @@ export default class Ledge extends Extension {
         const switching = this._detail.visible && this._selected !== id;
         const entering = !this._detail.visible;
         if (entering) this._detailPositioned = false;
+        // A rebuilt card keeps keyboard focus on the same control position.
+        // St.Entry focuses its inner text actor, so match by containment.
+        const focus = global.stage.get_key_focus();
+        const focusIndex = refresh && this._detail.contains(focus)
+            ? this._focusTargets().findIndex(target => target.contains(focus)) : -1;
         this._mountDetail();
         this._selected = id;
+        this._autofocus = null;
         this._detail.destroy_all_children();
 
         const direction = this._tooltipDirection();
@@ -647,8 +713,11 @@ export default class Ledge extends Extension {
         const body = new St.BoxLayout({vertical: true, style: `spacing: ${LAYOUT.blockSpacing}px;`});
         card.add_child(body);
         const header = new St.BoxLayout({style: `spacing: ${Math.round(LAYOUT.headerGap)}px;`});
-        const glyphKey = module.cell().glyph;
-        if (glyphKey) {
+        const {glyph: glyphKey, icon} = module.cell();
+        if (icon) {
+            header.add_child(new St.Icon({icon_name: icon, icon_size: Math.round(LAYOUT.glyphSize),
+                style_class: 'ledge-cell-icon', y_align: Clutter.ActorAlign.CENTER}));
+        } else if (glyphKey) {
             const glyph = new St.DrawingArea({width: LAYOUT.glyphSize, height: LAYOUT.glyphSize, y_align: Clutter.ActorAlign.CENTER});
             glyph.connect('repaint', area => {
                 const cr = area.get_context();
@@ -684,6 +753,10 @@ export default class Ledge extends Extension {
         }
         this._detail.show();
         this._placeDetail();
+        if (focusIndex >= 0) {
+            const targets = this._focusTargets();
+            (targets[Math.min(focusIndex, targets.length - 1)] ?? this._autofocus)?.grab_key_focus();
+        }
     }
 
     _placeDetail() {
@@ -714,6 +787,9 @@ export default class Ledge extends Extension {
             x = cell ? cell.get_transformed_position()[0] + LAYOUT.ringDiameter / 2 - this._detail.width / 2
                 : host.x + host.width / 2 - this._detail.width / 2;
         }
+        // Cells rebuilt this frame have no position yet; the card's own
+        // allocation signal places it again once layout has run.
+        if (!Number.isFinite(x) || !Number.isFinite(y)) return;
         const nextX = Math.round(Math.max(area.x, Math.min(x, area.x + area.width - this._detail.width)));
         const nextY = Math.round(Math.max(area.y, Math.min(y, area.y + area.height - this._detail.height)));
         if (nextX === this._detail.x && nextY === this._detail.y && this._detailPositioned) return;
@@ -747,6 +823,8 @@ export default class Ledge extends Extension {
         if (this._overviewHidingSignal) Main.overview.disconnect(this._overviewHidingSignal);
         if (this._overviewHiddenSignal) Main.overview.disconnect(this._overviewHiddenSignal);
         if (this._settingsSignal) this._settings.disconnect(this._settingsSignal);
+        if (this._focusSignal) global.stage.disconnect(this._focusSignal);
+        this._focusSignal = 0;
         if (this._detailMounted) Main.layoutManager.removeChrome(this._detail);
         Main.layoutManager.removeChrome(this._orbChrome);
         this._host?.destroy();

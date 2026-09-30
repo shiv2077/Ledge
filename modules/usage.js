@@ -178,6 +178,7 @@ class UsageModule extends Module {
             source.destroy();
             source = null;
         }
+        super.stop();
     }
 
     _reading() { return source?.readings.find(p => p.id === this.id); }

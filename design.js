@@ -19,6 +19,8 @@ export const PALETTE = {
 
 export const PROVIDER_COLORS = {claude: '#E9956C', cursor: '#B59AFF', codex: '#63D9AE'};
 
+export const MODULE_COLORS = {power: '#FFC857', todo: '#7AB8FF', models: '#9BE564', github: '#C9D1D9', training: '#FF8FB1'};
+
 export const LAYOUT = {
     sideBodyDepth: px(186),
     curlRadius: px(103),

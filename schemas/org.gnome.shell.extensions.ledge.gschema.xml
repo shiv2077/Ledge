@@ -7,6 +7,15 @@
     <key name="claude" type="b"><default>true</default><summary>Read Claude Code usage</summary></key>
     <key name="cursor" type="b"><default>true</default><summary>Read Cursor usage</summary></key>
     <key name="codex" type="b"><default>true</default><summary>Read Codex usage</summary></key>
+    <key name="power" type="b"><default>true</default><summary>Show the power profile widget</summary></key>
+    <key name="todo" type="b"><default>true</default><summary>Show the todo widget</summary></key>
+    <key name="models" type="b"><default>true</default><summary>Show the local models widget</summary></key>
+    <key name="models-poll-seconds" type="i"><default>15</default><range min="5" max="300"/><summary>Seconds between local model checks</summary></key>
+    <key name="github" type="b"><default>true</default><summary>Show the GitHub widget</summary></key>
+    <key name="github-repos" type="as"><default>[]</default><summary>Repositories whose latest CI run is watched, as owner/name</summary></key>
+    <key name="github-poll-seconds" type="i"><default>300</default><range min="60" max="3600"/><summary>Seconds between GitHub checks</summary></key>
+    <key name="training" type="b"><default>true</default><summary>Show the training run widget</summary></key>
+    <key name="training-stall-minutes" type="i"><default>10</default><range min="1" max="240"/><summary>Minutes without an update before a running job counts as stalled</summary></key>
     <key name="poll-seconds" type="i"><default>300</default><range min="60" max="1800"/><summary>Seconds between reads</summary></key>
     <key name="toggle-notch" type="as"><default>['&lt;Super&gt;&lt;Shift&gt;l']</default><summary>Focus or collapse Ledge</summary></key>
   </schema>

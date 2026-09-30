@@ -76,6 +76,50 @@ export default class Smoke extends Ledge {
             assert(!this._detail.visible, 'Returning to workspace must not resurrect popup');
         }
     }
+    async checkWidgets() {
+        const ids = ['claude', 'cursor', 'codex', 'power', 'todo', 'models', 'github', 'training'];
+        assert(this._stack.get_n_children() === ids.length && ids.every(id => this._modules.has(id)), 'Every widget has a cell');
+        const data = `${GLib.get_user_data_dir()}/ledge`;
+        // Todo: typing into the card entry and Enter add an item that is saved.
+        const todo = this._modules.get('todo');
+        this._showDetail('todo');
+        await delay(200);
+        const entry = this._autofocus;
+        assert(entry instanceof St.Entry && this._focusTargets().includes(entry), 'Todo entry is keyboard reachable');
+        entry.grab_key_focus();
+        entry.set_text('smoke item');
+        entry.clutter_text.emit('activate');
+        await delay(400);
+        assert(todo.cell().label === '1', `Todo count follows adds, got ${todo.cell().label}`);
+        assert(this._autofocus !== entry && this._autofocus.contains(global.stage.get_key_focus()), 'New entry keeps focus after the card rebuilds');
+        const saved = JSON.parse(new TextDecoder().decode(GLib.file_get_contents(`${data}/todos.json`)[1]));
+        assert(saved.length === 1 && saved[0].text === 'smoke item', 'Todo saved to disk');
+        global.stage.set_key_focus(null);
+        // Training: an atomic rename into runs/ is picked up by the monitor.
+        const writeRun = (fields) => {
+            const tmp = `${data}/runs/.smoke.json.tmp`;
+            GLib.file_set_contents(tmp, JSON.stringify({name: 'smoke', epoch: 2, total_epochs: 4, step: 10, loss: 0.5,
+                eta_seconds: 120, updated_at: Date.now() / 1000, ...fields}));
+            Gio.File.new_for_path(tmp).move(Gio.File.new_for_path(`${data}/runs/smoke.json`), Gio.FileCopyFlags.OVERWRITE, null, null);
+        };
+        writeRun({state: 'running'});
+        await delay(600);
+        const training = this._modules.get('training');
+        assert(training.cell().label === '0.500' && training.cell().fraction === 0.5, `Training cell shows the run, got ${JSON.stringify(training.cell())}`);
+        writeRun({state: 'done', epoch: 4});
+        await delay(600);
+        assert(training.cell().label === '—', 'Finished run leaves the cell idle');
+        // Every card renders with its footer inside the padding.
+        for (const id of ids) {
+            this._showDetail(id, true);
+            await delay(150);
+            const card = this._detail.get_first_child().get_children().find(child => child.has_style_class_name('ledge-detail'));
+            const actions = card.get_last_child();
+            assert(Math.abs(card.height - actions.y - actions.height - 16) <= 1, `${id}: card footer inset`);
+            await this.capture(`${id}-card`);
+        }
+        this._hideDetail();
+    }
     async runSmoke() {
         await delay(2200);
         Main.overview.hide();
@@ -83,6 +127,7 @@ export default class Smoke extends Ledge {
         assert(usageSource().readings.length === 3, 'Three providers must render');
         assert(usageSource().readings.every(p => p.windows.length && p.status === 'ok'), 'Demo readings must succeed');
         assert(usageSource().activities.length === 3, 'Activity demo reader succeeds');
+        await this.checkWidgets();
         await this.checkWorkspaceDismissal();
         // Wrapped provider warnings must participate in the card's natural height.
         const savedReadings = usageSource().readings;
@@ -151,7 +196,7 @@ export default class Smoke extends Ledge {
         assert(!this._orb.visible && !this._orbDrawing.visible, 'Collapsed handle has no settings residue');
         await this.capture('closed-handle');
         const firstCell = this._stack.get_first_child();
-        move(1278, this._host.y + this._host.height / 2);
+        move(1918, this._host.y + this._host.height / 2);
         await delay(80);
         assert(this._host.width > 10 && this._host.width < 70, 'Unfold interpolates size instead of snapping');
         assert(this._stack.get_first_child() === firstCell, 'Animation preserves provider actors');
@@ -162,7 +207,7 @@ export default class Smoke extends Ledge {
         move(400, 400);
         await delay(380);
         assert(this._expandT > 0 && this._expandT < 1, 'Pointer departure starts folding after grace period');
-        move(1278, this._host.y + this._host.height / 2);
+        move(1918, this._host.y + this._host.height / 2);
         await delay(850);
         assert(this._expandT === 1 && !this._motionTimer, 'Re-entry reverses and settles the spring');
         this._settings.set_boolean('always-show', true);
@@ -341,7 +386,7 @@ export default class Smoke extends Ledge {
     subprocess.run(['gsettings', 'set', 'org.gnome.desktop.wm.preferences', 'num-workspaces', '2'], env=env, check=True)
     with (OUTPUT / 'shell.log').open('w') as log:
         process = subprocess.Popen(['dbus-run-session', '--', 'gnome-shell', '--headless', '--wayland', '--no-x11',
-                                    '--virtual-monitor', '1280x800'], env=env, stdout=log, stderr=log, start_new_session=True)
+                                    '--virtual-monitor', '1920x1080'], env=env, stdout=log, stderr=log, start_new_session=True)
         try:
             deadline = time.monotonic() + 60
             while time.monotonic() < deadline and process.poll() is None and not report.exists():

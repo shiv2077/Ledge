@@ -17,3 +17,19 @@
 .ledge-actions { spacing: 8px; }
 .ledge-settings { padding: 0; background-color: transparent; color: #ffffff; }
 .ledge-settings:hover, .ledge-settings:focus, .ledge-settings:active { background-color: transparent; }
+.ledge-cell-icon { color: #ffffff; }
+.ledge-row { padding: 6px 8px; border-radius: 8px; background-color: transparent; color: #ffffff; }
+.ledge-row:hover { background-color: #242424; }
+.ledge-row:focus { background-color: #343434; box-shadow: inset 0 0 0 1px #a0a0a0; }
+.ledge-row-active { background-color: #242424; }
+.ledge-row-title { font-size: 12px; font-weight: 400; color: #ffffff; }
+.ledge-dim { color: #707070; text-decoration: line-through; }
+.ledge-section { font-size: 11px; font-weight: 600; color: #a0a0a0; }
+.ledge-entry { padding: 6px 10px; border-radius: 8px; background-color: #242424; color: #ffffff; font-size: 12px; caret-color: #ffffff; selection-background-color: #505050; }
+.ledge-entry:focus { box-shadow: inset 0 0 0 1px #a0a0a0; }
+.ledge-icon-button { padding: 4px; border-radius: 6px; background-color: transparent; color: #a0a0a0; }
+.ledge-icon-button:hover { background-color: #343434; color: #ffffff; }
+.ledge-icon-button:focus { background-color: #404040; color: #ffffff; }
+.ledge-small-action { padding: 3px 8px; border-radius: 6px; background-color: #242424; color: #ffffff; font-size: 11px; }
+.ledge-small-action:hover { background-color: #343434; }
+.ledge-small-action:focus { background-color: #404040; box-shadow: inset 0 0 0 1px #a0a0a0; }
