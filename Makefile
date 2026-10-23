@@ -25,6 +25,7 @@ reload: dev-link
 	gnome-extensions disable ledge@shiv2077 && gnome-extensions enable ledge@shiv2077
 	@test -f $(HOME)/.local/share/gnome-shell/extensions/ledge@shiv2077/extension.js
 	@grep -q '_onOverviewShowing' $(HOME)/.local/share/gnome-shell/extensions/ledge@shiv2077/extension.js
-# GJS caches ES modules, so edited JS needs a fresh shell. This runs one in a window.
+# GJS caches ES modules, so edited JS needs a fresh shell. This runs one in a window
+# (needs mutter-devkit, from the mutter-dev-bin package).
 nested: dev-link
-	$(CLEAN_ENV) WAYLAND_DISPLAY=$(WAYLAND_DISPLAY) DISPLAY=$(DISPLAY) dbus-run-session -- gnome-shell --nested --wayland
+	$(CLEAN_ENV) WAYLAND_DISPLAY=$(WAYLAND_DISPLAY) DISPLAY=$(DISPLAY) dbus-run-session -- gnome-shell --devkit --wayland

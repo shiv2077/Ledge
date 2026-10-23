@@ -3,8 +3,10 @@ import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import GIRepository from 'gi://GIRepository';
 
-GIRepository.Repository.prepend_search_path('/usr/lib/gnome-shell/girepository-1.0');
-GIRepository.Repository.prepend_library_path('/usr/lib/gnome-shell');
+// GIRepository 3.0 made these instance methods; 2.0 has them static.
+const repository = GIRepository.Repository.dup_default?.() ?? GIRepository.Repository;
+repository.prepend_search_path('/usr/lib/gnome-shell/girepository-1.0');
+repository.prepend_library_path('/usr/lib/gnome-shell');
 Gio.resources_register(Gio.Resource.load('/usr/share/gnome-shell/org.gnome.Shell.Extensions.src.gresource'));
 const root = ARGV[0];
 const {default: Preferences} = await import(`file://${root}/prefs.js`);

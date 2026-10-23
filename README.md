@@ -4,7 +4,7 @@
 
 **A screen-edge notch for GNOME Shell that keeps the things you check all day one glance away.**
 
-![GNOME Shell 46](https://img.shields.io/badge/GNOME%20Shell-46-4A86CF?logo=gnome&logoColor=white)
+![GNOME Shell 46–50](https://img.shields.io/badge/GNOME%20Shell-46--50-4A86CF?logo=gnome&logoColor=white)
 ![Ubuntu 24.04](https://img.shields.io/badge/Ubuntu-24.04-E95420?logo=ubuntu&logoColor=white)
 ![Wayland](https://img.shields.io/badge/Wayland-ready-FFBC00)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green)
@@ -95,7 +95,7 @@ Every theme keeps text at WCAG AA contrast or better. This is enforced by tests 
 
 ## Installation
 
-**Requirements:** Ubuntu 24.04 with GNOME Shell 46, Python 3 and `glib-compile-schemas`, which ship with Ubuntu Desktop. Optional: `gh` for the GitHub widget, Ollama or LM Studio for the models widget.
+**Requirements:** GNOME Shell 46 to 50 (Ubuntu 24.04 to 26.04), Python 3 and `glib-compile-schemas`, which ship with Ubuntu Desktop. Optional: `gh` for the GitHub widget, Ollama or LM Studio for the models widget.
 
 ```sh
 git clone https://github.com/shiv2077/Ledge.git

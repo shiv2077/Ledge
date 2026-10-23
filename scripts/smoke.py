@@ -424,6 +424,8 @@ export default class Smoke extends Ledge {
     subprocess.run(['gsettings', 'set', 'org.gnome.shell', 'disable-user-extensions', 'false'], env=env, check=True)
     subprocess.run(['gsettings', 'set', 'org.gnome.mutter', 'dynamic-workspaces', 'false'], env=env, check=True)
     subprocess.run(['gsettings', 'set', 'org.gnome.desktop.wm.preferences', 'num-workspaces', '2'], env=env, check=True)
+    # A new virtual pointer starts at the origin, where the hot corner opens the Overview.
+    subprocess.run(['gsettings', 'set', 'org.gnome.desktop.interface', 'enable-hot-corners', 'false'], env=env, check=True)
     with (OUTPUT / 'shell.log').open('w') as log:
         process = subprocess.Popen(['dbus-run-session', '--', 'gnome-shell', '--headless', '--wayland', '--no-x11',
                                     '--virtual-monitor', '1920x1080'], env=env, stdout=log, stderr=log, start_new_session=True)

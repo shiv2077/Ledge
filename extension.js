@@ -23,6 +23,9 @@ import {TrainingModule} from './modules/training.js';
 // Cell order in the notch.
 const MODULES = [...USAGE_MODULES, PowerModule, TodoModule, ModelsModule, GithubModule, TrainingModule];
 
+// Clutter rejects contains(null), and the key focus is null when nothing holds it.
+const holds = (actor, focus) => !!focus && actor.contains(focus);
+
 export default class Ledge extends Extension {
     enable() {
         this._alive = true;
@@ -133,7 +136,7 @@ export default class Ledge extends Extension {
         });
         // Typing in a card holds the notch open; focus moving elsewhere releases it.
         this._focusSignal = global.stage.connect('notify::key-focus', () => {
-            if (this._detail?.visible && !this._detail.contains(global.stage.get_key_focus())) this._hover();
+            if (this._detail?.visible && !holds(this._detail, global.stage.get_key_focus())) this._hover();
         });
         this._overviewShowingSignal = Main.overview.connect('showing', () => this._onOverviewShowing());
         this._overviewHidingSignal = Main.overview.connect('hiding', () => this._onOverviewHiding());
@@ -475,7 +478,7 @@ export default class Ledge extends Extension {
         for (const id of this._enabled()) this._cellMotion.set(id, {value: this._expandT, velocity: 0});
         this._render();
         const focus = global.stage.get_key_focus();
-        if (focus && (this._host.contains(focus) || this._detail.contains(focus) || this._orb.contains(focus)))
+        if (holds(this._host, focus) || holds(this._detail, focus) || holds(this._orb, focus))
             global.stage.set_key_focus(null);
     }
 
@@ -499,7 +502,7 @@ export default class Ledge extends Extension {
         } else {
             this._hideTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 300, () => {
                 this._hideTimer = 0;
-                const typing = this._detail.visible && this._detail.contains(global.stage.get_key_focus());
+                const typing = this._detail.visible && holds(this._detail, global.stage.get_key_focus());
                 if (!this._keyboardOpen && !typing && !this._host.hover && !this._detail.hover && !this._orb.hover) {
                     this._hideDetail();
                     this._expanded = this._settings.get_boolean('always-show');
@@ -521,7 +524,7 @@ export default class Ledge extends Extension {
     }
 
     _render() {
-        const focused = this._stack.get_children().findIndex(cell => cell.contains(global.stage.get_key_focus()));
+        const focused = this._stack.get_children().findIndex(cell => holds(cell, global.stage.get_key_focus()));
         const vertical = this._vertical();
         const enabled = this._enabled();
         this._rings = [];
@@ -719,8 +722,8 @@ export default class Ledge extends Extension {
         // A rebuilt card keeps keyboard focus on the same control position.
         // St.Entry focuses its inner text actor, so match by containment.
         const focus = global.stage.get_key_focus();
-        const focusIndex = refresh && this._detail.contains(focus)
-            ? this._focusTargets().findIndex(target => target.contains(focus)) : -1;
+        const focusIndex = refresh && holds(this._detail, focus)
+            ? this._focusTargets().findIndex(target => holds(target, focus)) : -1;
         this._mountDetail();
         this._selected = id;
         this._autofocus = null;
