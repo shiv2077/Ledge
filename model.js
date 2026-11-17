@@ -44,12 +44,22 @@ export function percentage(value) {
         ? `${Math.round(value)}%` : '—';
 }
 
-export function resetText(value, now = Date.now()) {
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const DAY_MINUTES = 1440;
+
+// `format` is 'countdown' (resets in 2h 14m) or 'clock' (resets 14:30, or
+// resets Fri 09:00 beyond a day), in local time.
+export function resetText(value, now = Date.now(), format = 'countdown') {
     if (!value || !Number.isFinite(Date.parse(value)))
         return 'reset time unavailable';
     const minutes = Math.ceil((Date.parse(value) - now) / 60000);
     if (minutes <= 0)
         return 'reset due · refresh for latest';
+    if (format === 'clock') {
+        const at = new Date(Date.parse(value));
+        const time = `${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`;
+        return minutes < DAY_MINUTES ? `resets ${time}` : `resets ${WEEKDAYS[at.getDay()]} ${time}`;
+    }
     if (minutes < 60)
         return `resets in ${minutes}m`;
     if (minutes < 1440)
@@ -57,24 +67,96 @@ export function resetText(value, now = Date.now()) {
     return `resets in ${Math.floor(minutes / 1440)}d ${Math.floor(minutes % 1440 / 60)}h`;
 }
 
+const SLUG = /^[a-z0-9][a-z0-9-]{0,31}$/;
+const STATUSES = ['ok', 'stale', 'needsAuth', 'error', 'unavailable'];
+
+// One reading per enabled provider's default sign-in, then its extra
+// accounts by slug (`account` is null for the default).
 export function normalize(data, enabled) {
     if (data?.version !== 1 || !Array.isArray(data.providers))
         throw new Error('Invalid reader response');
-    return enabled.map(id => {
-        const item = data.providers.find(p => p?.id === id);
-        if (!item)
-            return {id, name: NAMES[id], status: 'error', message: 'No reading returned. Try Refresh.', windows: []};
-        const statuses = ['ok', 'stale', 'needsAuth', 'error', 'unavailable'];
+    const rows = [];
+    for (const id of enabled) {
+        const items = data.providers.filter(p => p?.id === id && (!p.account || SLUG.test(p.account)));
+        if (!items.some(item => !item.account))
+            rows.push({id, account: null, name: NAMES[id], status: 'error', message: 'No reading returned. Try Refresh.', windows: []});
+        rows.push(...items.map(item => reading(id, item)));
+    }
+    return rows.sort((a, b) => enabled.indexOf(a.id) - enabled.indexOf(b.id) || (a.account ?? '').localeCompare(b.account ?? ''));
+}
+
+function reading(id, item) {
+    {
         return {
-            id, name: NAMES[id], status: statuses.includes(item.status) ? item.status : 'error',
+            id, account: item.account || null, name: NAMES[id], status: STATUSES.includes(item.status) ? item.status : 'error',
             message: typeof item.message === 'string' ? item.message.slice(0, 240) : '',
             source: typeof item.source === 'string' ? item.source.slice(0, 80) : '',
             updatedAt: item.updatedAt,
             windows: (Array.isArray(item.windows) ? item.windows : []).filter(w =>
                 w && typeof w.usedPercent === 'number' && Number.isFinite(w.usedPercent) && w.usedPercent >= 0
-            ).slice(0, 8).map(w => ({...w, label: String(w.label || 'Usage').slice(0, 80)})),
+            ).slice(0, 8).map(w => ({...w, label: String(w.label || 'Usage').slice(0, 80),
+                windowMinutes: Number.isInteger(w.windowMinutes) && w.windowMinutes > 0 ? w.windowMinutes : null})),
         };
+    }
+}
+
+// The cell key of a reading: `claude`, or `claude:work` for an extra account.
+export const accountKey = r => r.account ? `${r.id}:${r.account}` : r.id;
+export const accountName = slug => slug ? slug.split('-').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' ') : '';
+
+// How far use runs ahead of an even spend over the window: used percent
+// minus elapsed percent. Null without a window length or reset time.
+export function paceDeficit(window, now = Date.now()) {
+    const reset = Date.parse(window?.resetsAt);
+    const minutes = window?.windowMinutes;
+    if (!Number.isFinite(reset) || !minutes || typeof window.usedPercent !== 'number') return null;
+    const elapsed = 1 - (reset - now) / (minutes * 60000);
+    if (elapsed < 0 || elapsed > 1) return null;
+    return window.usedPercent - elapsed * 100;
+}
+
+const ON_PACE = 5;
+
+export function paceText(deficit) {
+    if (deficit === null) return '';
+    if (Math.abs(deficit) < ON_PACE) return 'on pace';
+    return `${Math.round(Math.abs(deficit))}% ${deficit > 0 ? 'ahead of' : 'under'} pace`;
+}
+
+// The window a chip shows: 'session' (the first), 'weekly' (the longest)
+// or 'tightest' (the most used).
+export function headlineWindow(windows, choice) {
+    if (!windows?.length) return null;
+    if (choice === 'weekly')
+        return windows.reduce((best, w) => (w.windowMinutes ?? 0) > (best.windowMinutes ?? 0) ? w : best, windows[0]);
+    if (choice === 'tightest')
+        return windows.reduce((best, w) => w.usedPercent > best.usedPercent ? w : best, windows[0]);
+    return windows[0];
+}
+
+const known = value => typeof value === 'number' && Number.isFinite(value);
+
+// Reorders usage cells among their own slots: 'fixed' keeps them,
+// 'remaining' puts the least left first, 'deficit' the furthest ahead of
+// pace first. Cells without a value follow, in their own order.
+export function orderUsage(cells, mode) {
+    if (mode !== 'remaining' && mode !== 'deficit') return cells;
+    const slots = cells.map((cell, index) => cell.info.usage ? index : -1).filter(index => index >= 0);
+    const value = cell => mode === 'remaining' ? cell.info.usage.remaining : known(cell.info.usage.deficit) ? -cell.info.usage.deficit : null;
+    const sorted = slots.map((slot, order) => ({cell: cells[slot], order})).sort((a, b) => {
+        const x = value(a.cell), y = value(b.cell);
+        if (known(x) && known(y) && x !== y) return x - y;
+        if (known(x) !== known(y)) return known(x) ? -1 : 1;
+        return a.order - b.order;
     });
+    const result = [...cells];
+    slots.forEach((slot, i) => { result[slot] = sorted[i].cell; });
+    return result;
+}
+
+export function money(value) {
+    if (!known(value)) return '—';
+    return value >= 100 ? `$${Math.round(value)}` : `$${value.toFixed(2)}`;
 }
 
 // Todos: [{id, text, done, created}], open items first, each group oldest first.

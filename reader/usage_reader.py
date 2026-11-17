@@ -20,6 +20,7 @@ import email.utils
 import json
 import math
 import os
+import re
 from pathlib import Path
 import selectors
 import shutil
@@ -181,13 +182,25 @@ def _reset(value: Any, field: str = "resetsAt") -> Optional[_dt.datetime]:
 
 
 def _window(window_id: str, label: str, percent: float,
-            reset: Optional[_dt.datetime]) -> dict[str, Any]:
+            reset: Optional[_dt.datetime], minutes: Optional[float] = None) -> dict[str, Any]:
     return {
         "id": window_id,
         "label": label,
         "usedPercent": float(percent),
         "resetsAt": isoformat(reset) if reset is not None else None,
+        "windowMinutes": int(minutes) if minutes is not None and minutes > 0 else None,
     }
+
+
+# Claude window lengths follow from the API's fixed kinds.
+SESSION_MINUTES = 5 * 60
+WEEK_MINUTES = 7 * 24 * 60
+
+
+def _claude_minutes(kind: str) -> Optional[int]:
+    if kind == "session":
+        return SESSION_MINUTES
+    return WEEK_MINUTES if kind.startswith("weekly_") else None
 
 
 def _kind_label(kind: str) -> str:
@@ -225,7 +238,7 @@ def parse_claude_usage(payload: Any) -> list[dict[str, Any]]:
             if percent is None:
                 continue
             reset = _reset(_field(entry, "resetsAt", "resets_at"), "Claude resetsAt")
-            windows.append(_window(kind, _kind_label(kind), percent, reset))
+            windows.append(_window(kind, _kind_label(kind), percent, reset, _claude_minutes(kind)))
 
     # Older Claude Code responses expose the same readings under named keys.
     for value, window_id, label in (
@@ -244,7 +257,7 @@ def parse_claude_usage(payload: Any) -> list[dict[str, Any]]:
             continue
         reset = _reset(_field(value, "resetsAt", "resets_at"),
                        f"Claude {window_id} resetsAt")
-        windows.append(_window(window_id, label, percent, reset))
+        windows.append(_window(window_id, label, percent, reset, _claude_minutes(window_id)))
 
     if not windows:
         raise UsageParseError("Claude reported no usage windows")
@@ -372,10 +385,10 @@ def _codex_windows(limits: Mapping[str, Any], now: Optional[_dt.datetime] = None
                 if seconds < 0:
                     raise UsageParseError("Codex reset countdown is negative")
                 reset = now + _dt.timedelta(seconds=seconds)
-        label = _codex_label(_field(bucket, "windowDurationMins", "window_duration_mins",
-                                     "window_minutes"),
-                             window_id)
-        result.append(_window(window_id, label, percent, reset))
+        duration = _field(bucket, "windowDurationMins", "window_duration_mins", "window_minutes")
+        label = _codex_label(duration, window_id)
+        minutes = _finite_number(duration, "Codex windowDurationMins") if duration is not _MISSING else None
+        result.append(_window(window_id, label, percent, reset, minutes))
     if not result:
         raise UsageParseError("Codex reported no usage windows")
     return result
@@ -633,11 +646,13 @@ def _valid_cached_window(value: Any) -> Optional[dict[str, Any]]:
     reset = value.get("resetsAt", None)
     if reset is not None and _parse_iso(reset) is None:
         return None
+    minutes = value.get("windowMinutes")
     return {
         "id": window_id,
         "label": label,
         "usedPercent": float(number),
         "resetsAt": reset if reset is None else isoformat(_parse_iso(reset)),
+        "windowMinutes": minutes if isinstance(minutes, int) and minutes > 0 else None,
     }
 
 
@@ -744,7 +759,13 @@ def _clear_backoff(provider_id: str, env: Mapping[str, str]) -> None:
 
 def purge_provider_cache(provider_id: str, env: Optional[Mapping[str, str]] = None) -> None:
     values = os.environ if env is None else env
-    for path in (_cache_path(provider_id, values), _backoff_path(provider_id, values)):
+    paths = [_cache_path(provider_id, values), _backoff_path(provider_id, values)]
+    try:
+        # Extra accounts cache as `<provider>-<slug>.json`.
+        paths += list(cache_dir(values).glob(f"{provider_id}-*.json"))
+    except OSError:
+        pass
+    for path in paths:
         try:
             path.unlink()
         except OSError:
@@ -1269,32 +1290,33 @@ def _cached_failure(provider_id: str, problem: ProviderProblem,
     }
 
 
-def _read_codex(env: Mapping[str, str], now: _dt.datetime) -> dict[str, Any]:
-    command = find_codex_command(env)
+def _read_codex(env: Mapping[str, str], now: _dt.datetime, cache_id: str = "codex",
+                app_server: bool = True) -> dict[str, Any]:
+    command = find_codex_command(env) if app_server else None
     if command:
         try:
             answer = codex_app_server(command)
             windows = parse_codex_response(answer, now=now)
             reading = _provider_ok("codex", "Codex app-server", windows, now)
-            _save_cache("codex", reading, env)
+            _save_cache(cache_id, reading, env)
             return reading
         except (ProviderProblem, UsageParseError):
             pass
     try:
         reading = _codex_local_reading(env, now)
         if reading["status"] == "ok":
-            _save_cache("codex", reading, env)
+            _save_cache(cache_id, reading, env)
         elif reading["windows"]:
-            _save_cache("codex", reading, env)
+            _save_cache(cache_id, reading, env)
         return reading
     except ProviderProblem as local_problem:
-        cache = _load_cache("codex", env)
+        cache = _load_cache(cache_id, env)
         return _cached_failure("codex", local_problem, cache, now)
 
 
-def _read_claude(env: Mapping[str, str], now: _dt.datetime) -> dict[str, Any]:
-    cache = _load_cache("claude", env)
-    until, attempt = _load_backoff("claude", env, now)
+def _read_claude(env: Mapping[str, str], now: _dt.datetime, cache_id: str = "claude") -> dict[str, Any]:
+    cache = _load_cache(cache_id, env)
+    until, attempt = _load_backoff(cache_id, env, now)
     if until is not None:
         return _cached_failure("claude", ProviderProblem(
             "error", "Claude usage is rate limited; retry after the backoff window"), cache, now)
@@ -1309,14 +1331,14 @@ def _read_claude(env: Mapping[str, str], now: _dt.datetime) -> dict[str, Any]:
             raise ProviderProblem("needsAuth", "Claude Code credentials were rejected")
         if status == 429:
             delay = claude_backoff(attempt, retry_after)
-            _save_backoff("claude", env, now + _dt.timedelta(seconds=delay), attempt + 1)
+            _save_backoff(cache_id, env, now + _dt.timedelta(seconds=delay), attempt + 1)
             raise ProviderProblem("error", "Claude usage is rate limited; retry after the backoff window")
         if status < 200 or status >= 300:
             raise ProviderProblem("error", "Claude usage endpoint returned an error")
         windows = parse_claude_usage(body)
         reading = _provider_ok("claude", "Claude OAuth usage", windows, now)
-        _save_cache("claude", reading, env)
-        _clear_backoff("claude", env)
+        _save_cache(cache_id, reading, env)
+        _clear_backoff(cache_id, env)
         return reading
     except ProviderProblem as problem:
         return _cached_failure("claude", problem, cache, now)
@@ -1349,22 +1371,59 @@ def _read_cursor(env: Mapping[str, str], now: _dt.datetime) -> dict[str, Any]:
 
 _DEMO_WINDOWS = {
     "codex": [
-        {"id": "primary", "label": "5h limit", "usedPercent": 23.0,
+        {"id": "primary", "label": "5h limit", "usedPercent": 23.0, "windowMinutes": 300,
          "resetsAt": "2030-01-01T05:00:00.000Z"},
-        {"id": "secondary", "label": "Weekly limit", "usedPercent": 8.0,
+        {"id": "secondary", "label": "Weekly limit", "usedPercent": 8.0, "windowMinutes": 10080,
          "resetsAt": "2030-01-07T00:00:00.000Z"},
     ],
     "claude": [
-        {"id": "session", "label": "Current session", "usedPercent": 31.0,
+        {"id": "session", "label": "Current session", "usedPercent": 31.0, "windowMinutes": 300,
          "resetsAt": "2030-01-01T05:00:00.000Z"},
-        {"id": "weekly_all", "label": "All models", "usedPercent": 12.0,
+        {"id": "weekly_all", "label": "All models", "usedPercent": 12.0, "windowMinutes": 10080,
          "resetsAt": "2030-01-07T00:00:00.000Z"},
     ],
     "cursor": [
-        {"id": "included", "label": "Included usage", "usedPercent": 17.0,
+        {"id": "included", "label": "Included usage", "usedPercent": 17.0, "windowMinutes": None,
          "resetsAt": "2030-01-31T00:00:00.000Z"},
     ],
 }
+
+
+# Extra sign-ins live beside the default folder as `.claude-<slug>` or
+# `.claude_<slug>` (and the same for Codex); a folder counts only when it
+# holds the provider's sign-in file. The hyphen spelling wins a tie.
+ACCOUNT_MARKERS = {"claude": (".claude", ".credentials.json", "CLAUDE_CONFIG_DIR"),
+                   "codex": (".codex", "auth.json", "CODEX_HOME")}
+SLUG = re.compile(r"^[a-z0-9][a-z0-9_-]{0,31}$")
+
+
+def discover_accounts(provider_id: str, env: Mapping[str, str]) -> list[tuple[str, Path]]:
+    """Extra accounts as (slug, folder), sorted by slug. The default is not listed."""
+
+    marker = ACCOUNT_MARKERS.get(provider_id)
+    if marker is None:
+        return []
+    prefix, sign_in, _variable = marker
+    found: dict[str, Path] = {}
+    try:
+        entries = sorted(_home(env).iterdir(), key=lambda path: path.name)
+    except OSError:
+        return []
+    for path in entries:
+        name = path.name
+        if not (name.startswith(prefix + "-") or name.startswith(prefix + "_")):
+            continue
+        slug = name[len(prefix) + 1:].lower().replace("_", "-")
+        if not SLUG.match(slug):
+            continue
+        try:
+            if not (path / sign_in).is_file():
+                continue
+        except OSError:
+            continue
+        if slug not in found or name[len(prefix)] == "-":
+            found[slug] = path
+    return sorted(found.items())
 
 
 def demo_document(provider_ids: Iterable[str],
@@ -1394,6 +1453,7 @@ def demo_document(provider_ids: Iterable[str],
             window["resetsAt"] = demo_resets[reset_name]
         providers.append({
             "id": provider_id,
+            "account": None,
             "name": PROVIDER_NAMES.get(provider_id, provider_id.title()),
             "status": "ok",
             "message": "",
@@ -1401,6 +1461,13 @@ def demo_document(provider_ids: Iterable[str],
             "updatedAt": demo_time,
             "windows": windows,
         })
+    # A second Claude sign-in shows how extra accounts look.
+    if "claude" in provider_ids:
+        work = dict(providers[[p["id"] for p in providers].index("claude")])
+        work["account"] = "work"
+        work["windows"] = [dict(window, usedPercent=percent)
+                           for window, percent in zip(work["windows"], (78.0, 41.0))]
+        providers.append(work)
     return {"version": VERSION, "updatedAt": demo_time, "providers": providers}
 
 
@@ -1435,12 +1502,20 @@ def read_document(provider_ids: Iterable[str], demo: bool = False,
         if provider_id not in enabled:
             purge_provider_cache(provider_id, values)
     providers = []
+    rows: list[tuple[str, Optional[str], Mapping[str, str]]] = []
     for provider_id in ids:
+        rows.append((provider_id, None, values))
+        for slug, folder in discover_accounts(provider_id, values):
+            account_env = dict(values)
+            account_env[ACCOUNT_MARKERS[provider_id][2]] = str(folder)
+            rows.append((provider_id, slug, account_env))
+    for provider_id, account, account_values in rows:
+        cache_id = provider_id if account is None else f"{provider_id}-{account}"
         try:
             if provider_id == "codex":
-                reading = _read_codex(values, now)
+                reading = _read_codex(account_values, now, cache_id, app_server=account is None)
             elif provider_id == "claude":
-                reading = _read_claude(values, now)
+                reading = _read_claude(account_values, now, cache_id)
             elif provider_id == "cursor":
                 reading = _read_cursor(values, now)
             else:
@@ -1463,6 +1538,7 @@ def read_document(provider_ids: Iterable[str], demo: bool = False,
             }
         providers.append({
             "id": provider_id,
+            "account": account,
             "name": PROVIDER_NAMES.get(provider_id, provider_id.title()),
             "status": reading["status"],
             "message": _sanitize_message(reading.get("message", ""), ""),

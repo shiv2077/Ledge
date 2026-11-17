@@ -12,7 +12,7 @@ files = ['metadata.json', 'extension.js', 'model.js', 'design.js', 'draw.js',
          'lib/appearance.js', 'lib/glass.js', 'lib/ui.js', 'lib/strip.js', 'lib/deck.js', 'lib/rail.js', 'lib/panel.js', 'lib/alerts.js', 'lib/windows.js',
          'modules/usage.js', 'modules/power.js', 'modules/todo.js', 'modules/models.js',
          'modules/github.js', 'modules/training.js', 'tools/ledge_status.py',
-         'reader/usage_reader.py', 'reader/activity.py',
+         'reader/usage_reader.py', 'reader/activity.py', 'reader/costs.py',
          'schemas/org.gnome.shell.extensions.ledge.gschema.xml', 'schemas/gschemas.compiled']
 target = ROOT / 'dist/ledge@shiv2077.shell-extension.zip'
 target.parent.mkdir(exist_ok=True)

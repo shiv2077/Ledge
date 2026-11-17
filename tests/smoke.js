@@ -28,6 +28,8 @@ export default class Smoke extends Ledge {
         this.getSettings().set_boolean('always-show', true);
         // The rail checks run first; checkPanel covers the top bar.
         this.getSettings().set_string('placement', 'edge');
+        // The demo's second Claude account stays hidden until checkAccounts.
+        this.getSettings().set_strv('hidden-accounts', ['claude:work']);
         super.enable();
         this.runSmoke().catch(error => GLib.file_set_contents(`${output}/result.json`,
             JSON.stringify({ok: false, error: String(error), stack: error.stack, passed: checks, crops})));
@@ -705,11 +707,72 @@ export default class Smoke extends Ledge {
         done('alerts');
     }
 
+    // Usage depth: an extra account gets its own chip after the default,
+    // chips reorder by the chosen mode, decks show pace and spend, and a
+    // pinned deck stays open after the pointer leaves.
+    async checkAccounts(move) {
+        const R = this.R;
+        const keys = () => R.strip.keys().slice(0, 4).join();
+        this._settings.set_strv('hidden-accounts', []);
+        await delay(300);
+        assert(keys() === 'claude,claude:work,cursor,codex', `An extra account follows its default sign-in, got ${keys()}`);
+        assert(R.strip.chips.get('claude:work').info.badge === 'CW', 'An extra account has its own monogram');
+        this._settings.set_string('usage-order', 'remaining');
+        await delay(300);
+        // Demo: work 22 % left, cursor 83, claude 69, codex 77.
+        assert(keys() === 'claude:work,claude,codex,cursor', `Least left first, got ${keys()}`);
+        this._settings.set_string('usage-order', 'deficit');
+        await delay(300);
+        const deficits = R.strip.keys().slice(0, 4).map(key => R.strip.chips.get(key).info.usage.deficit);
+        assert(deficits.every((d, i) => i === 0 || d === null || deficits[i - 1] === null || deficits[i - 1] >= d), `Furthest ahead of pace first, got ${deficits}`);
+        this._settings.set_string('usage-order', 'fixed');
+        await delay(300);
+        assert(keys() === 'claude,claude:work,cursor,codex', 'Fixed order returns');
+        await this.capture('rail-accounts', R.actor);
+
+        R.open('claude:work');
+        await delay(400);
+        const texts = actor => actor instanceof St.Label ? [actor.text]
+            : [...actor instanceof St.Button && actor.label ? [actor.label] : [], ...actor.get_children().flatMap(texts)];
+        let shown = texts(R.deck.actor);
+        assert(shown.includes('work') || shown.some(t => t.includes('work')), 'The account deck names its account');
+        assert(!shown.includes('Spend'), 'Spend shows on the default sign-in only');
+        R.open('claude');
+        await delay(400);
+        shown = texts(R.deck.actor);
+        assert(shown.some(t => /pace/.test(t)), 'Deck meters carry a pace caption');
+        assert(shown.some(t => t.toLowerCase() === 'spend') && shown.some(t => t.startsWith('estimate at API list prices')), 'Claude deck shows estimated spend');
+        this._settings.set_string('reset-format', 'clock');
+        await delay(300);
+        R.open('claude', true);
+        await delay(300);
+        assert(texts(R.deck.actor).some(t => /^resets \d\d:\d\d$|^resets [A-Z][a-z]{2} \d\d:\d\d$/.test(t)), 'Clock reset format');
+        await this.capture('deck-claude-depth', R.deck.actor);
+        this._settings.set_string('reset-format', 'countdown');
+
+        R.open('claude', true);
+        await delay(100);
+        assert(R.deck.visible, 'Deck open before pinning');
+        R.togglePin();
+        await delay(400);
+        assert(R._pinned && texts(R.deck.actor).includes('unpin'), `Pin shows in the footer: ${R._pinned} ${texts(R.deck.actor).slice(-4)}`);
+        move(5, 5);
+        await delay(MOTION.foldGrace + 400);
+        assert(R.deck.visible, 'A pinned deck stays open after the pointer leaves');
+        R.togglePin();
+        await delay(MOTION.foldGrace + 600);
+        assert(!R.deck.visible, 'Unpinned, it closes once the pointer is away');
+        this._settings.set_strv('hidden-accounts', ['claude:work']);
+        await delay(300);
+        assert(!R.strip.chips.has('claude:work'), 'Hidden accounts leave the strip');
+        done('accounts');
+    }
+
     async runSmoke() {
         await delay(2200);
         Main.overview.hide();
         await delay(700);
-        assert(usageSource().readings.length === 3, 'Three providers must render');
+        assert(usageSource().readings.filter(p => !p.account).length === 3, 'Three providers must render');
         assert(usageSource().readings.every(p => p.windows.length && p.status === 'ok'), 'Demo readings must succeed');
         assert(usageSource().activities.length === 3, 'Activity demo reader succeeds');
         done('demo reader');
@@ -725,12 +788,13 @@ export default class Smoke extends Ledge {
         await this.checkReducedMotion();
         await this.checkOverview();
         await this.checkAlerts();
+        await this.checkAccounts(move);
         const keyboard = Clutter.get_default_backend().get_default_seat().create_virtual_device(Clutter.InputDeviceType.KEYBOARD_DEVICE);
         await this.checkPanel(pointer, keyboard);
 
         this._settings.set_boolean('cursor', false);
         await delay(600);
-        assert(usageSource().readings.length === 2 && !usageSource().readings.some(p => p.id === 'cursor'), 'Disabled provider disappears');
+        assert(usageSource().readings.filter(p => !p.account).length === 2 && !usageSource().readings.some(p => p.id === 'cursor'), 'Disabled provider disappears');
         assert(!this.R.strip.chips.has('cursor') && this.R.strip.chips.size === IDS.length - 1, 'Disabled module loses its chip');
         assert(this.R.actor.height === railSize(IDS.length - 1, true).length, 'Rail shortens to fit');
         done('provider disable');
@@ -757,7 +821,7 @@ export default class Smoke extends Ledge {
         done('disable');
         super.enable();
         await delay(600);
-        assert(usageSource().readings.length === 2, 'Re-enable works');
+        assert(usageSource().readings.filter(p => !p.account).length === 2, 'Re-enable works');
         this._settings.set_boolean('always-show', true);
         await delay(700);
         await this.checkWorkspaceDismissal();

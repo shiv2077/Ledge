@@ -392,12 +392,54 @@ def _claude_folder(cwd: str) -> str:
     return _clean_text(stripped.rsplit("/", 1)[-1], "Claude") or "Claude"
 
 
+TITLE_TAIL_BYTES = 256 * 1024
+
+
+def claude_title(transcript: Path, session_id: str) -> Optional[str]:
+    """The session's title from the end of its transcript: the last
+    `custom-title` record, else the last `ai-title`. Only title records are
+    parsed; every other line is skipped unread."""
+
+    try:
+        with transcript.open("rb") as stream:
+            stream.seek(0, os.SEEK_END)
+            size = stream.tell()
+            stream.seek(max(0, size - TITLE_TAIL_BYTES))
+            data = stream.read(TITLE_TAIL_BYTES)
+    except OSError:
+        return None
+    titles: dict[str, str] = {}
+    for line in data.split(b"\n"):
+        if b'"custom-title"' not in line and b'"ai-title"' not in line:
+            continue
+        try:
+            record = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(record, dict) or record.get("sessionId", session_id) != session_id:
+            continue
+        kind = record.get("type")
+        value = record.get("customTitle") if kind == "custom-title" else record.get("aiTitle") if kind == "ai-title" else None
+        title = _clean_text(value, "")
+        if title:
+            titles[kind] = title
+    return titles.get("custom-title") or titles.get("ai-title")
+
+
+def _claude_transcript(root: Optional[Path], cwd: str, session_id: str) -> Optional[Path]:
+    if root is None or not session_id or "/" in session_id:
+        return None
+    slug = "".join(ch if ch.isalnum() else "-" for ch in cwd)
+    return root / "projects" / slug / f"{session_id}.jsonl"
+
+
 def _claude_session(
     record: Mapping[str, Any],
     *,
     now: float,
     proc_root: Path | str,
     current_uid: Optional[int],
+    root: Optional[Path] = None,
 ) -> Optional[dict[str, Any]]:
     pid = record.get("pid")
     pid_number = _finite(pid)
@@ -440,7 +482,10 @@ def _claude_session(
         since = now
 
     folder = _claude_folder(cwd)
-    name = _clean_text(record.get("name"), folder) or folder
+    session_id = _clean_text(record.get("sessionId"), "", 128)
+    transcript = _claude_transcript(root, cwd, session_id)
+    title = claude_title(transcript, session_id) if transcript else None
+    name = title or _clean_text(record.get("name"), folder) or folder
     detail = _clean_text(f"{_claude_surface(record.get('entrypoint'))} · {folder}", "Claude")
     waiting_for = None
     if state == "waiting":
@@ -449,7 +494,7 @@ def _claude_session(
             waiting_for = _clean_text(record.get("needs"), "") or None
 
     return {
-        "id": _clean_text(record.get("sessionId"), "", 128),
+        "id": session_id,
         "pid": int(pid_number),
         "name": name,
         "detail": detail,
@@ -507,6 +552,7 @@ def read_claude_sessions(
                 now=current,
                 proc_root=proc_root,
                 current_uid=current_uid,
+                root=root,
             )
         except (OSError, TypeError, ValueError, OverflowError):
             session = None

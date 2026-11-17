@@ -5,11 +5,16 @@ import {Module} from '../lib/module.js';
 import {run} from '../lib/subprocess.js';
 import {sessionEvents, limitAlerts} from '../lib/alerts.js';
 import {raiseSession} from '../lib/windows.js';
-import {PROVIDERS, NAMES, BADGES, percentage, resetText, normalize, usageSummary, remainingPercent} from '../model.js';
+import {PROVIDERS, NAMES, BADGES, percentage, resetText, normalize, usageSummary, remainingPercent,
+    accountKey, accountName, paceDeficit, paceText, headlineWindow, money} from '../model.js';
 import {PROVIDER_COLORS} from '../design.js';
 
 const MAX_OUTPUT = 131072;
 const SIGTERM = 15;
+// Spend is re-read every ten minutes; a warm read takes well under a second.
+const COST_SECONDS = 600;
+const COST_TIMEOUT = 30;
+const COST_PROVIDERS = ['claude', 'codex'];
 
 // One reader process serves every enabled usage cell. Created by the first
 // usage module to start and destroyed when the last one stops.
@@ -38,9 +43,16 @@ class UsageSource {
         this._history = new Map();
         this._generation = 0;
         this._activityGeneration = 0;
+        this.costs = null;
         this._settingsSignal = this.settings.connect('changed', (_s, key) => {
             if (key === 'demo') this._queueRestart();
             if (key === 'poll-seconds') this._schedule();
+            if (key === 'costs') this.refreshCosts();
+            if (key === 'headline-window') this._checkLimits();
+        });
+        this._costPoll = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, COST_SECONDS, () => {
+            this.refreshCosts();
+            return GLib.SOURCE_CONTINUE;
         });
         this._schedule();
         this._activityPoll = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 3, () => {
@@ -81,6 +93,7 @@ class UsageSource {
             this._notify();
             this.refresh();
             this.refreshActivity();
+            this.refreshCosts();
             return GLib.SOURCE_REMOVE;
         });
     }
@@ -134,23 +147,56 @@ class UsageSource {
     // headline window, unless the provider is muted.
     _checkLimits() {
         const muted = this.settings.get_strv('alerts-muted');
+        const choice = this.settings.get_string('headline-window');
         for (const reading of this.readings) {
-            const window = reading.windows[0];
+            const window = headlineWindow(reading.windows, choice);
             if (reading.status !== 'ok' || !window) continue;
-            const {alerts, state} = limitAlerts(limits.get(reading.id) ?? null, window);
-            limits.set(reading.id, state);
-            if (muted.includes(reading.id) || !alerts.length) continue;
+            const key = accountKey(reading);
+            const {alerts, state} = limitAlerts(limits.get(key) ?? null, window);
+            limits.set(key, state);
+            if (muted.includes(reading.id) || muted.includes(key) || !alerts.length) continue;
             const step = Math.max(...alerts);
-            notify(step >= 100 ? `${NAMES[reading.id]} limit reached` : `${NAMES[reading.id]} at ${step}%`,
-                `${window.label}: ${usageSummary(window.usedPercent)} · ${resetText(window.resetsAt)}`);
+            const name = reading.account ? `${NAMES[reading.id]} (${accountName(reading.account)})` : NAMES[reading.id];
+            notify(step >= 100 ? `${name} limit reached` : `${name} at ${step}%`,
+                `${window.label}: ${usageSummary(window.usedPercent)} · ${resetText(window.resetsAt, Date.now(), this.settings.get_string('reset-format'))}`);
         }
     }
 
     _readerFailed() {
-        this.readings = this.ids().map(id => ({
-            ...(this.readings.find(p => p.id === id) ?? {id, name: NAMES[id], windows: []}),
-            status: 'stale', message: 'usage reader failed · check that Python 3 is installed, then refresh',
-        }));
+        const ids = this.ids();
+        const kept = this.readings.filter(p => ids.includes(p.id));
+        for (const id of ids)
+            if (!kept.some(p => p.id === id && !p.account)) kept.push({id, account: null, name: NAMES[id], windows: []});
+        this.readings = kept.map(p => ({...p,
+            status: 'stale', message: 'usage reader failed · check that Python 3 is installed, then refresh'}));
+    }
+
+    // Estimated spend from local transcripts, at low priority. Off, or with
+    // neither Claude nor Codex on, it reads nothing.
+    refreshCosts() {
+        const wanted = this.settings.get_boolean('costs') && COST_PROVIDERS.some(id => this.members.has(id));
+        if (!wanted) {
+            this._costCancel?.cancel();
+            this._costCancel = null;
+            if (this.costs) { this.costs = null; this._notify(); }
+            return;
+        }
+        if (this._costCancel) return;
+        const cancellable = this._costCancel = new Gio.Cancellable();
+        const args = ['/usr/bin/nice', '-n', '19', '/usr/bin/python3', `${this.host.path}/reader/costs.py`];
+        if (this.settings.get_boolean('demo')) args.push('--demo');
+        run(args, {timeout: COST_TIMEOUT, cancellable}).then(result => {
+            if (cancellable !== this._costCancel) return;
+            this._costCancel = null;
+            let costs = null;
+            try {
+                if (!result.ok || result.stdout.length > MAX_OUTPUT) throw new Error('Cost reader failed');
+                const data = JSON.parse(result.stdout);
+                if (data?.version === 1 && data.providers && typeof data.label === 'string') costs = data;
+            } catch { /* Spend stays unknown. */ }
+            this.costs = costs;
+            this._notify();
+        });
     }
 
     _cancelActivity() {
@@ -208,9 +254,11 @@ class UsageSource {
     destroy() {
         this._cancelRead();
         this._cancelActivity();
-        for (const timer of [this._poll, this._activityPoll, this._restartIdle])
+        this._costCancel?.cancel();
+        this._costCancel = null;
+        for (const timer of [this._poll, this._activityPoll, this._restartIdle, this._costPoll])
             if (timer) GLib.Source.remove(timer);
-        this._poll = this._activityPoll = this._restartIdle = 0;
+        this._poll = this._activityPoll = this._restartIdle = this._costPoll = 0;
         this.settings.disconnect(this._settingsSignal);
         this.members.clear();
     }
@@ -245,47 +293,87 @@ class UsageModule extends Module {
         super.stop();
     }
 
-    _reading() { return source?.readings.find(p => p.id === this.id); }
+    // This provider's readings: the default sign-in first, then extra
+    // accounts not hidden in preferences.
+    _readings() {
+        const hidden = this.settings.get_strv('hidden-accounts');
+        return (source?.readings ?? []).filter(p => p.id === this.id && !(p.account && hidden.includes(accountKey(p))));
+    }
 
-    cell() {
-        const reading = this._reading();
-        const remaining = remainingPercent(reading?.windows?.[0]?.usedPercent);
-        const stale = reading?.status !== 'ok';
-        const sessions = source?.sessions(this.id) ?? [];
+    _reading(key = this.id) {
+        return this._readings().find(p => accountKey(p) === key)
+            ?? (key === this.id ? {id: this.id, account: null, name: NAMES[this.id], status: 'loading', windows: []} : null);
+    }
+
+    cells() {
+        const readings = this._readings();
+        if (!readings.some(p => !p.account)) readings.unshift(this._reading());
+        return readings.map(reading => ({key: accountKey(reading), info: this._info(reading)}));
+    }
+
+    cell() { return this._info(this._reading()); }
+
+    _info(reading) {
+        const window = headlineWindow(reading?.windows, this.settings.get_string('headline-window'));
+        const remaining = remainingPercent(window?.usedPercent);
+        const spent = remaining === 0 && this.settings.get_boolean('grey-when-spent');
+        const stale = reading?.status !== 'ok' || spent;
+        // Sessions and their light belong to the default sign-in.
+        const sessions = reading?.account ? [] : source?.sessions(this.id) ?? [];
         const updated = Date.parse(reading?.updatedAt);
+        const account = reading?.account ? ` ${accountName(reading.account)}` : '';
         return {
             ...super.cell(), meter: true, fraction: remaining === null ? null : remaining / 100,
-            label: percentage(remaining), stale, accent: PROVIDER_COLORS[this.id], badge: BADGES[this.id], sessions,
+            label: percentage(remaining), stale, accent: PROVIDER_COLORS[this.id], sessions,
+            badge: reading?.account ? `${BADGES[this.id][0]}${reading.account[0].toUpperCase()}` : BADGES[this.id],
             light: sessions.some(s => s.state === 'waiting') ? 'waiting' : sessions.some(s => s.state === 'busy') ? 'working' : 'off',
             updatedAt: Number.isFinite(updated) ? updated : null,
-            accessibleName: `${NAMES[this.id]}: ${percentage(remaining)} left${stale ? ', reading unavailable or stale' : ''}`,
+            usage: {remaining, deficit: window ? paceDeficit(window) : null},
+            accessibleName: `${NAMES[this.id]}${account}: ${percentage(remaining)} left${stale ? ', reading unavailable, stale or spent' : ''}`,
         };
     }
 
-    context() {
-        const count = source?.sessions(this.id).length ?? 0;
-        return count ? `${count} session${count === 1 ? '' : 's'}` : '';
+    context(key = this.id) {
+        const reading = this._reading(key);
+        const parts = [];
+        if (reading?.account) parts.push(accountName(reading.account).toLowerCase());
+        const count = reading?.account ? 0 : source?.sessions(this.id).length ?? 0;
+        if (count) parts.push(`${count} session${count === 1 ? '' : 's'}`);
+        return parts.join(' · ');
     }
 
-    card(body, ui) {
-        if (this.host.settings.get_boolean('demo'))
-            body.add_child(ui.label('demo · sample readings', 'ledge-caption'));
-        const p = this._reading();
+    card(body, ui, key = this.id) {
+        const demo = this.host.settings.get_boolean('demo');
+        if (demo) body.add_child(ui.label('demo · sample readings', 'ledge-caption'));
+        const p = this._reading(key);
+        const format = this.settings.get_string('reset-format');
         const stale = p?.status !== 'ok';
-        if (!p) body.add_child(ui.label('reading usage…', 'ledge-caption'));
+        if (!p || p.status === 'loading') body.add_child(ui.label('reading usage…', 'ledge-caption'));
         else {
             if (stale || p.message)
                 body.add_child(ui.label(`${p.status === 'stale' ? 'stale · ' : ''}${p.message || 'usage unavailable'}`, 'ledge-warning'));
             for (const w of p.windows) {
                 const remaining = remainingPercent(w.usedPercent);
-                body.add_child(ui.bar(w.label, resetText(w.resetsAt), remaining === null ? null : remaining / 100,
-                    stale, PROVIDER_COLORS[this.id], usageSummary(w.usedPercent)));
+                const caption = [usageSummary(w.usedPercent), paceText(paceDeficit(w))].filter(Boolean).join(' · ');
+                body.add_child(ui.bar(w.label, resetText(w.resetsAt, Date.now(), format), remaining === null ? null : remaining / 100,
+                    stale, PROVIDER_COLORS[this.id], caption));
             }
             // The demo line already says where demo readings come from.
-            if (p.source && !this.host.settings.get_boolean('demo')) body.add_child(ui.label(`source · ${p.source}`, 'ledge-caption'));
+            if (p.source && !demo) body.add_child(ui.label(`source · ${p.source}`, 'ledge-caption'));
         }
 
-        const sessions = source?.sessions(this.id) ?? [];
+        const spend = !p?.account ? source?.costs?.providers?.[this.id] : null;
+        if (spend) {
+            const section = ui.section('Spend');
+            section.add_child(ui.splitRow('today', money(spend.today), 'ledge-figure'));
+            section.add_child(ui.splitRow('last 7 days', money(spend.week), 'ledge-figure'));
+            for (const project of spend.projects ?? [])
+                section.add_child(ui.splitRow(project.name, money(project.cost), 'ledge-caption'));
+            section.add_child(ui.label(source.costs.label, 'ledge-caption'));
+            body.add_child(section);
+        }
+
+        const sessions = p?.account ? [] : source?.sessions(this.id) ?? [];
         if (sessions.length) {
             const section = ui.section('Sessions');
             // A session row raises the window that runs it.
@@ -302,7 +390,7 @@ class UsageModule extends Module {
                 section.add_child(ui.label(`and ${sessions.length - 4} more`, 'ledge-caption'));
             body.add_child(section);
         }
-        return [['Refresh', () => source?.refresh()]];
+        return [['Refresh', () => { source?.refresh(); source?.refreshCosts(); }]];
     }
 }
 

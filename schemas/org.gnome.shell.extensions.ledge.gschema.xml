@@ -29,6 +29,12 @@
     <key name="github-poll-seconds" type="i"><default>300</default><range min="60" max="3600"/><summary>Seconds between GitHub checks</summary></key>
     <key name="training" type="b"><default>true</default><summary>Show the training run widget</summary></key>
     <key name="training-stall-minutes" type="i"><default>10</default><range min="1" max="240"/><summary>Minutes without an update before a running job counts as stalled</summary></key>
+    <key name="hidden-accounts" type="as"><default>[]</default><summary>Extra accounts hidden from the strip, by key such as claude:work</summary></key>
+    <key name="usage-order" type="s"><default>'fixed'</default><choices><choice value="fixed"/><choice value="remaining"/><choice value="deficit"/></choices><summary>Order of usage chips: fixed, least remaining first, or furthest ahead of pace first</summary></key>
+    <key name="headline-window" type="s"><default>'session'</default><choices><choice value="session"/><choice value="weekly"/><choice value="tightest"/></choices><summary>Which window a usage chip shows</summary></key>
+    <key name="grey-when-spent" type="b"><default>true</default><summary>Grey out a usage chip whose headline window is spent</summary></key>
+    <key name="reset-format" type="s"><default>'countdown'</default><choices><choice value="countdown"/><choice value="clock"/></choices><summary>Show resets as a countdown or a clock time</summary></key>
+    <key name="costs" type="b"><default>true</default><summary>Estimate spend from local Claude Code and Codex transcripts</summary></key>
     <key name="alerts-muted" type="as"><default>[]</default><summary>Providers whose limit alerts are muted, by id</summary></key>
     <key name="peek-seconds" type="i"><default>5</default><range min="0" max="30"/><summary>Seconds the rail stays open on a finished or waiting session; 0 turns peek off</summary></key>
     <key name="sound-finished" type="s"><default>'complete'</default><choices><choice value="complete"/><choice value="message-new-instant"/><choice value="bell"/><choice value="dialog-information"/><choice value=""/></choices><summary>Sound theme event when a session finishes, or empty for none</summary></key>

@@ -351,3 +351,26 @@ class ActivityTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TitleTests(unittest.TestCase):
+    def test_custom_title_beats_ai_title_and_last_wins(self):
+        with tempfile.TemporaryDirectory() as root:
+            path = Path(root) / "s.jsonl"
+            lines = [
+                {"type": "ai-title", "sessionId": "s", "aiTitle": "First guess"},
+                {"type": "user", "sessionId": "s", "message": {"content": "custom-title is mentioned here"}},
+                {"type": "ai-title", "sessionId": "s", "aiTitle": "Fix the panel"},
+                {"type": "custom-title", "sessionId": "other", "customTitle": "Not this one"},
+            ]
+            path.write_text("\n".join(json.dumps(line) for line in lines) + "\n")
+            self.assertEqual(activity.claude_title(path, "s"), "Fix the panel")
+            with path.open("a") as stream:
+                stream.write(json.dumps({"type": "custom-title", "sessionId": "s", "customTitle": "Panel work"}) + "\n")
+            self.assertEqual(activity.claude_title(path, "s"), "Panel work")
+            self.assertIsNone(activity.claude_title(Path(root) / "missing.jsonl", "s"))
+
+    def test_transcript_path_follows_the_folder_slug(self):
+        path = activity._claude_transcript(Path("/c"), "/home/u/.config/x", "abc")
+        self.assertEqual(path, Path("/c/projects/-home-u--config-x/abc.jsonl"))
+        self.assertIsNone(activity._claude_transcript(Path("/c"), "/x", "../evil"))

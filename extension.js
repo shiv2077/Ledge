@@ -5,6 +5,7 @@ import Shell from 'gi://Shell';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import {closeHttp} from './lib/http.js';
+import {orderUsage} from './model.js';
 import {Appearance} from './lib/appearance.js';
 import {Rail} from './lib/rail.js';
 import {Panel} from './lib/panel.js';
@@ -110,12 +111,16 @@ export default class Ledge extends Extension {
         }
     }
 
-    // One cell per running module, in chip order: {key, module, info}.
+    // Cells of the running modules, in chip order: {key, module, info}. A
+    // module may give several (one per account); usage cells may reorder.
     _cells() {
-        return MODULES.filter(M => this._modules.has(M.id)).map(M => {
+        const cells = MODULES.filter(M => this._modules.has(M.id)).flatMap(M => {
             const module = this._modules.get(M.id);
-            return {key: M.id, module, info: module.cell()};
+            return module.cells
+                ? module.cells().map(cell => ({...cell, module}))
+                : [{key: M.id, module, info: module.cell()}];
         });
+        return orderUsage(cells, this._settings.get_string('usage-order'));
     }
 
     // Coalesces updates from several modules into one redraw before paint.
@@ -127,7 +132,8 @@ export default class Ledge extends Extension {
             this._changeIdle = 0;
             const changed = this._pendingChanges;
             this._pendingChanges = new Set();
-            this._placement.update(this._cells(), changed);
+            const cells = this._cells();
+            this._placement.update(cells, new Set(cells.filter(cell => changed.has(cell.module.id)).map(cell => cell.key)));
             return GLib.SOURCE_REMOVE;
         });
     }

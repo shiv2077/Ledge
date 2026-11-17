@@ -363,3 +363,36 @@ class ProcessTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DepthTests(unittest.TestCase):
+    def test_claude_window_minutes_follow_kind(self):
+        windows = reader.parse_claude_usage({"limits": [
+            {"kind": "session", "percent": 10}, {"kind": "weekly_all", "percent": 5},
+            {"kind": "other", "percent": 1}]})
+        self.assertEqual([w["windowMinutes"] for w in windows], [300, 10080, None])
+
+    def test_codex_window_minutes_come_from_duration(self):
+        windows = reader._codex_windows({"primary": {"usedPercent": 5, "windowDurationMins": 300},
+                                         "secondary": {"usedPercent": 1}})
+        self.assertEqual([w["windowMinutes"] for w in windows], [300, None])
+
+    def test_accounts_need_a_sign_in_and_hyphen_wins(self):
+        with tempfile.TemporaryDirectory() as home:
+            root = Path(home)
+            for name in (".claude", ".claude-work", ".claude_work", ".claude_side", ".claude-mem", ".codex-alt"):
+                (root / name).mkdir()
+            for name in (".claude-work", ".claude_work", ".claude_side"):
+                (root / name / ".credentials.json").write_text("{}")
+            (root / ".codex-alt" / "auth.json").write_text("{}")
+            env = {"HOME": home}
+            self.assertEqual(reader.discover_accounts("claude", env),
+                             [("side", root / ".claude_side"), ("work", root / ".claude-work")])
+            self.assertEqual(reader.discover_accounts("codex", env), [("alt", root / ".codex-alt")])
+            self.assertEqual(reader.discover_accounts("cursor", env), [])
+
+    def test_demo_has_a_second_claude_account(self):
+        doc = reader.demo_document(["claude", "codex"], now=dt.datetime(2030, 1, 1, tzinfo=dt.timezone.utc))
+        accounts = [(p["id"], p["account"]) for p in doc["providers"]]
+        self.assertEqual(accounts, [("claude", None), ("codex", None), ("claude", "work")])
+        self.assertTrue(all("windowMinutes" in w for p in doc["providers"] for w in p["windows"]))

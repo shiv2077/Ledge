@@ -70,6 +70,16 @@ export default class LedgePreferences extends ExtensionPreferences {
         addSwitch(usage, 'codex', 'Codex', 'Asks the local Codex app server; falls back to dated rollout readings.');
         addSpin(usage, 'poll-seconds', 'Refresh interval', 'Seconds. Provider rate-limit backoff still applies.', 60, 1800, 60);
         addSwitch(usage, 'demo', 'Demo readings', 'Uses sample data. No accounts or network are read while enabled.');
+        addChoice(usage, 'headline-window', 'Chip shows', ['session', 'weekly', 'tightest'], ['First window', 'Longest window', 'Most used window']);
+        addChoice(usage, 'usage-order', 'Chip order', ['fixed', 'remaining', 'deficit'], ['Fixed', 'Least left first', 'Furthest ahead of pace first']);
+        addChoice(usage, 'reset-format', 'Reset times', ['countdown', 'clock'], ['Countdown', 'Clock time']);
+        addSwitch(usage, 'grey-when-spent', 'Grey out spent chips', 'When the window a chip shows is used up.');
+        addSwitch(usage, 'costs', 'Spend estimate', 'Reads token counts from local Claude Code and Codex transcripts, never their text.');
+        const hiddenRow = new Adw.EntryRow({title: 'Hidden accounts (keys such as claude:work, comma separated)',
+            text: settings.get_strv('hidden-accounts').join(', ')});
+        hiddenRow.connect('changed', () => settings.set_strv('hidden-accounts',
+            hiddenRow.text.split(',').map(key => key.trim()).filter(Boolean)));
+        usage.add(hiddenRow);
 
         const alerts = group('Alerts', 'When a coding session finishes or needs you. Do Not Disturb silences both.');
         addSpin(alerts, 'peek-seconds', 'Peek', 'Seconds the edge rail unfolds to show the session; 0 turns it off.', 0, 30, 1);

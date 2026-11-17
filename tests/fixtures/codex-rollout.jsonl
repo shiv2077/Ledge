@@ -1,0 +1,5 @@
+{"type":"session_meta","timestamp":"2030-01-02T09:00:00Z","payload":{"cwd":"/work/ledge"}}
+{"type":"turn_context","timestamp":"2030-01-02T09:00:00Z","payload":{"model":"gpt-5-codex"}}
+{"type":"event_msg","timestamp":"2030-01-02T09:01:00Z","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":1000000,"cached_input_tokens":400000,"output_tokens":100000,"reasoning_output_tokens":50000},"last_token_usage":{"input_tokens":1000000,"cached_input_tokens":400000,"output_tokens":100000}}}}
+{"type":"event_msg","timestamp":"2030-01-02T09:01:01Z","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":1000000,"cached_input_tokens":400000,"output_tokens":100000,"reasoning_output_tokens":50000},"last_token_usage":{"input_tokens":1000000,"cached_input_tokens":400000,"output_tokens":100000}}}}
+{"type":"event_msg","timestamp":"2030-01-02T09:02:00Z","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":2000000,"cached_input_tokens":800000,"output_tokens":200000},"last_token_usage":{"input_tokens":1000000,"cached_input_tokens":400000,"output_tokens":100000}}}}
