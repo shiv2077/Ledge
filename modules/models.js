@@ -167,15 +167,14 @@ export class ModelsModule extends Module {
             if (backend === 'LM Studio' && this._logs?.logs)
                 section.add_child(ui.splitRow('requests today · 7 days', `${this._logs.today} · ${this._logs.week}`, 'ledge-figure'));
             for (const m of state.models) {
-                const parts = [`size ${formatBytes(m.size)}`];
+                const parts = [formatBytes(m.size)];
                 if (backend === 'Ollama') parts.push(`vram ${formatBytes(m.vram)}`);
                 if (m.context) parts.push(`ctx ${m.context}`);
-                if (m.quant) parts.push(m.quant);
                 if (this._speeds.has(m.name)) parts.push(this._speeds.get(m.name));
                 const trailing = backend === 'Ollama'
-                    ? [ui.button(this._measuring.has(m.name) ? 'measuring…' : 'measure speed', () => this._measure(m.name), 'ledge-small-action')]
+                    ? [ui.button(this._measuring.has(m.name) ? 'measuring' : 'speed', () => this._measure(m.name), 'ledge-action')]
                     : [];
-                section.add_child(ui.row(m.name, {detail: parts.join(' · '), trailing, mono: true}));
+                section.add_child(ui.row(m.quant ? `${m.name} · ${m.quant}` : m.name, {detail: parts.join(' · '), trailing, mono: true}));
             }
         }
         if (this._llama) {

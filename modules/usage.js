@@ -368,7 +368,7 @@ class UsageModule extends Module {
             section.add_child(ui.splitRow('today', money(spend.today), 'ledge-figure'));
             section.add_child(ui.splitRow('last 7 days', money(spend.week), 'ledge-figure'));
             for (const project of spend.projects ?? [])
-                section.add_child(ui.splitRow(project.name, money(project.cost), 'ledge-caption'));
+                section.add_child(ui.splitRow(project.name, money(project.cost), 'ledge-figure'));
             section.add_child(ui.label(source.costs.label, 'ledge-caption'));
             body.add_child(section);
         }
