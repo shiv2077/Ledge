@@ -35,13 +35,13 @@ export default class LedgePreferences extends ExtensionPreferences {
 
         this._appearance(page, settings, group);
 
-        const placement = group('Placement', 'Super+Shift+L opens the notch; Escape closes it. Switched-off widgets do no work and the notch shortens to fit.');
+        const placement = group('Placement', 'Super+Shift+L opens Ledge; Escape closes it. Switched-off modules do no work and take no space.');
         const edges = ['top', 'right', 'bottom', 'left'];
         const edge = new Adw.ComboRow({title: 'Screen edge', model: Gtk.StringList.new(['Top', 'Right', 'Bottom', 'Left']), selected: edges.indexOf(settings.get_string('edge'))});
         edge.connect('notify::selected', () => settings.set_string('edge', edges[edge.selected]));
         placement.add(edge);
         addSpin(placement, 'monitor', 'Monitor', '−1 follows the primary monitor; 0 is the first monitor.', -1, 32, 1);
-        addSwitch(placement, 'always-show', 'Always expanded', 'Otherwise, hover over the small edge pill to unfold it.');
+        addSwitch(placement, 'always-show', 'Always unfolded', 'Otherwise, rest the pointer on the tick at the screen edge to unfold the rail.');
 
         const usage = group('Coding usage', 'Uses existing tool sign-ins. Turning a source off stops reads and removes its cached reading.');
         addSwitch(usage, 'claude', 'Claude Code', 'Reads the local Claude OAuth credential; run Claude to refresh an expired sign-in.');
@@ -78,7 +78,7 @@ export default class LedgePreferences extends ExtensionPreferences {
 
     // Theme picker with swatches, then options for the selected theme only.
     _appearance(page, settings, group) {
-        const appearance = group('Appearance', 'Changes apply immediately, including to an open card.');
+        const appearance = group('Appearance', 'Changes apply immediately, including to an open deck.');
         const desktop = new Gio.Settings({schema_id: 'org.gnome.desktop.interface'});
         const hasAccent = desktop.settings_schema.has_key('accent-color');
         const tokensFor = theme => resolveTheme({
@@ -90,14 +90,17 @@ export default class LedgePreferences extends ExtensionPreferences {
                 accentColor: hasAccent ? desktop.get_string('accent-color') : null},
         });
 
-        // Swatch: notch, card, highlight and text as four rounded stripes.
+        // Swatch: rail, deck, highlight and text as four stripes with a cut corner.
         const swatches = [];
         const makeSwatch = () => {
             const area = new Gtk.DrawingArea({content_width: 44, content_height: 18, valign: Gtk.Align.CENTER});
             area.set_draw_func((_a, cr, w, h) => {
                 const colors = swatch(tokensFor(area._theme ?? 'midnight'));
-                cr.arc(h / 2, h / 2, h / 2, Math.PI / 2, Math.PI * 1.5);
-                cr.arc(w - h / 2, h / 2, h / 2, -Math.PI / 2, Math.PI / 2);
+                cr.moveTo(0, 0);
+                cr.lineTo(w - 4, 0);
+                cr.lineTo(w, 4);
+                cr.lineTo(w, h);
+                cr.lineTo(0, h);
                 cr.closePath();
                 cr.clip();
                 colors.forEach((color, i) => {
@@ -152,8 +155,8 @@ export default class LedgePreferences extends ExtensionPreferences {
             appearance.add(row);
             return row;
         };
-        addColor('custom-background', 'Notch background');
-        addColor('custom-card', 'Card background');
+        addColor('custom-background', 'Rail background');
+        addColor('custom-card', 'Deck background');
         addColor('custom-text', 'Text');
         addColor('custom-highlight', 'Highlight');
         custom.push(addScale('custom-opacity', 'Background opacity', 'Raised automatically if text would be hard to read.', 0.3, 1, 0.05, 2));

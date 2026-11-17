@@ -1,8 +1,8 @@
 <schemalist>
   <schema id="org.gnome.shell.extensions.ledge" path="/org/gnome/shell/extensions/ledge/">
     <key name="theme" type="s"><default>'midnight'</default><choices><choice value="midnight"/><choice value="graphite"/><choice value="nord"/><choice value="mocha"/><choice value="dracula"/><choice value="ocean"/><choice value="snow"/><choice value="frosted-dark"/><choice value="frosted-light"/><choice value="system"/><choice value="custom"/></choices><summary>Color theme</summary></key>
-    <key name="custom-background" type="s"><default>'#000000'</default><summary>Custom theme notch background, #rrggbb</summary></key>
-    <key name="custom-card" type="s"><default>'#1c1c1e'</default><summary>Custom theme card background, #rrggbb</summary></key>
+    <key name="custom-background" type="s"><default>'#000000'</default><summary>Custom theme rail background, #rrggbb</summary></key>
+    <key name="custom-card" type="s"><default>'#1c1c1e'</default><summary>Custom theme deck background, #rrggbb</summary></key>
     <key name="custom-text" type="s"><default>'#ffffff'</default><summary>Custom theme text color, #rrggbb</summary></key>
     <key name="custom-highlight" type="s"><default>'#3584e4'</default><summary>Custom theme highlight color, #rrggbb</summary></key>
     <key name="custom-opacity" type="d"><default>1.0</default><range min="0.3" max="1.0"/><summary>Custom theme background opacity</summary></key>
@@ -11,7 +11,7 @@
     <key name="glass-brightness" type="d"><default>0.85</default><range min="0.5" max="1.0"/><summary>Frosted glass backdrop brightness</summary></key>
     <key name="edge" type="s"><default>'right'</default><choices><choice value="top"/><choice value="right"/><choice value="bottom"/><choice value="left"/></choices><summary>Screen edge</summary></key>
     <key name="monitor" type="i"><default>-1</default><range min="-1" max="32"/><summary>Monitor index, or -1 for primary</summary></key>
-    <key name="always-show" type="b"><default>false</default><summary>Keep usage rings expanded</summary></key>
+    <key name="always-show" type="b"><default>false</default><summary>Keep the rail unfolded</summary></key>
     <key name="demo" type="b"><default>false</default><summary>Show sample readings without reading accounts</summary></key>
     <key name="claude" type="b"><default>true</default><summary>Read Claude Code usage</summary></key>
     <key name="cursor" type="b"><default>true</default><summary>Read Cursor usage</summary></key>
@@ -26,6 +26,6 @@
     <key name="training" type="b"><default>true</default><summary>Show the training run widget</summary></key>
     <key name="training-stall-minutes" type="i"><default>10</default><range min="1" max="240"/><summary>Minutes without an update before a running job counts as stalled</summary></key>
     <key name="poll-seconds" type="i"><default>300</default><range min="60" max="1800"/><summary>Seconds between reads</summary></key>
-    <key name="toggle-notch" type="as"><default>['&lt;Super&gt;&lt;Shift&gt;l']</default><summary>Focus or collapse Ledge</summary></key>
+    <key name="toggle-notch" type="as"><default>['&lt;Super&gt;&lt;Shift&gt;l']</default><summary>Unfold and focus Ledge, or fold it</summary></key>
   </schema>
 </schemalist>

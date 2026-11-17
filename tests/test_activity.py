@@ -92,7 +92,7 @@ class ActivityTests(unittest.TestCase):
 
             record = {
                 "pid": 42,
-                "cwd": "/work/usage-notch",
+                "cwd": "/work/usage-meter",
                 "entrypoint": "claude-vscode",
                 "name": "Editor task\nwith a long label",
                 "status": "busy",
@@ -116,7 +116,7 @@ class ActivityTests(unittest.TestCase):
 
         self.assertEqual(len(found), 1)
         self.assertEqual(found[0]["state"], "busy")
-        self.assertEqual(found[0]["detail"], "VS Code · usage-notch")
+        self.assertEqual(found[0]["detail"], "VS Code · usage-meter")
         self.assertNotIn("\n", found[0]["name"])
 
     def test_claude_caps_file_size_and_excludes_unknown_state(self):

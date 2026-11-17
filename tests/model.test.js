@@ -15,8 +15,8 @@ test('unknown values never become zero and overspend remains visible', () => {
     assert.equal(percentage(110), '110%');
 });
 test('expired reset does not claim allowance replenished', () => {
-    assert.equal(resetText('2026-01-01T00:00:00Z', Date.parse('2026-01-02')), 'Reset due · refresh for latest');
-    assert.equal(resetText(null), 'Reset time unavailable');
+    assert.equal(resetText('2026-01-01T00:00:00Z', Date.parse('2026-01-02')), 'reset due · refresh for latest');
+    assert.equal(resetText(null), 'reset time unavailable');
 });
 test('remaining summary matches tooltip copy and preserves overspend', () => {
     assert.equal(usageSummary(73), '27% left');

@@ -2,7 +2,7 @@ import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import {Module} from '../lib/module.js';
 import {run} from '../lib/subprocess.js';
-import {parseRepos, pullRequests, ciState, isGithubUrl} from '../model.js';
+import {BADGES, parseRepos, pullRequests, ciState, isGithubUrl} from '../model.js';
 import {MODULE_COLORS} from '../design.js';
 
 const PR_FIELDS = 'number,title,url,repository';
@@ -36,14 +36,14 @@ export class GithubModule extends Module {
     async _gh(args) {
         const r = await run(['gh', ...args], {timeout: GH_TIMEOUT, signal: SIGTERM, cancellable: this.cancellable, stderr: true});
         if (r.ok) {
-            try { return {data: JSON.parse(r.stdout)}; } catch { return {error: 'gh returned unreadable output.'}; }
+            try { return {data: JSON.parse(r.stdout)}; } catch { return {error: 'gh returned unreadable output'}; }
         }
         if (r.error?.matches?.(GLib.SpawnError, GLib.SpawnError.NOENT))
-            return {error: 'GitHub CLI (gh) is not installed.', fatal: true};
+            return {error: 'GitHub CLI (gh) is not installed', fatal: true};
         // Killed by the timeout: no exit status and no spawn error.
-        if (r.status === -1 && !r.error) return {error: 'gh did not answer in time.'};
+        if (r.status === -1 && !r.error) return {error: 'gh did not answer in time'};
         if (r.status === GH_AUTH_REQUIRED || /gh auth login/.test(r.stderr))
-            return {error: 'gh is not logged in. Run gh auth login in a terminal.', fatal: true};
+            return {error: 'gh is not logged in · run gh auth login in a terminal', fatal: true};
         return {error: `gh failed: ${r.stderr.split('\n').find(Boolean) ?? `exit ${r.status}`}`.slice(0, 200)};
     }
 
@@ -88,8 +88,8 @@ export class GithubModule extends Module {
     cell() {
         const s = this._state;
         const failed = s?.runs.some(r => r.state === 'failed');
-        return {...super.cell(), icon: 'events-merge-symbolic',
-            accent: failed ? 'critical' : MODULE_COLORS.github, fraction: failed ? 1 : null,
+        return {...super.cell(), badge: BADGES.github,
+            accent: MODULE_COLORS.github, light: failed || s?.fatal ? 'failed' : 'off',
             label: s && !s.fatal ? String(s.reviews.length) : '—',
             stale: !s || Boolean(s.error),
             accessibleName: `GitHub: ${!s ? 'loading' : s.fatal ? s.error : `${s.reviews.length} review requests${failed ? ', CI failing' : ''}`}`};
@@ -98,25 +98,27 @@ export class GithubModule extends Module {
     card(body, ui) {
         const s = this._state;
         if (!s) {
-            body.add_child(ui.label('Asking gh…', 'ledge-muted'));
+            body.add_child(ui.label('asking gh…', 'ledge-caption'));
             return [];
         }
         if (s.error) body.add_child(ui.label(s.error, 'ledge-warning'));
         const prs = (heading, list, empty) => {
-            body.add_child(ui.label(heading, 'ledge-section'));
-            if (!list.length) body.add_child(ui.label(empty, 'ledge-muted'));
+            const section = ui.section(heading);
+            if (!list.length) section.add_child(ui.label(empty, 'ledge-caption'));
             for (const pr of list.slice(0, 6))
-                body.add_child(ui.row(pr.title, {detail: `${pr.repo} #${pr.number}`, onClick: () => this._open(pr.url)}));
-            if (list.length > 6) body.add_child(ui.label(`and ${list.length - 6} more`, 'ledge-muted'));
+                section.add_child(ui.row(pr.title, {detail: `${pr.repo} #${pr.number}`, onClick: () => this._open(pr.url)}));
+            if (list.length > 6) section.add_child(ui.label(`and ${list.length - 6} more`, 'ledge-caption'));
+            body.add_child(section);
         };
-        prs('Review requested', s.reviews, 'No reviews waiting.');
-        prs('Your pull requests', s.mine, 'No open pull requests.');
-        body.add_child(ui.label('CI', 'ledge-section'));
-        if (!s.runs.length) body.add_child(ui.label('Add repositories to watch in Settings.', 'ledge-muted'));
+        prs('Review requested', s.reviews, 'no reviews waiting');
+        prs('Your pull requests', s.mine, 'no open pull requests');
+        const ci = ui.section('CI');
+        if (!s.runs.length) ci.add_child(ui.label('add repositories to watch in settings', 'ledge-caption'));
         for (const r of s.runs) {
             const detail = r.error || [r.title, r.branch, r.state === 'none' ? 'no runs' : r.state].filter(Boolean).join(' · ');
-            body.add_child(ui.row(r.repo, {detail, onClick: () => this._open(r.url)}));
+            ci.add_child(ui.row(r.repo, {detail, onClick: () => this._open(r.url)}));
         }
+        body.add_child(ci);
         return [['Refresh', () => this._poll()]];
     }
 

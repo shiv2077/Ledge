@@ -7,7 +7,7 @@ test:
 	python3 -m unittest discover -s tests -p 'test_*.py' -v
 	$(CLEAN_ENV) gjs -m tests/helpers.gjs.js
 	glib-compile-schemas --strict schemas
-	for f in *.js lib/*.js modules/*.js; do node --check $$f || exit 1; done
+	for f in *.js lib/*.js modules/*.js tests/smoke.js; do node --check $$f || exit 1; done
 package:
 	python3 scripts/package.py
 install:

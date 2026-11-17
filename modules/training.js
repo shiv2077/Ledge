@@ -3,13 +3,12 @@ import GLib from 'gi://GLib';
 import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
 import {Module} from '../lib/module.js';
 import {readText, ensureDir, dataDir} from '../lib/files.js';
-import {parseRun, runState, runProgress, formatLoss, formatDuration} from '../model.js';
+import {BADGES, parseRun, runState, runProgress, formatLoss, formatDuration} from '../model.js';
 import {MODULE_COLORS} from '../design.js';
 
 const STALL_CHECK_SECONDS = 60;
 const MAX_RUNS = 50;
 const CARD_RUNS = 6;
-const ICON = 'system-run-symbolic';
 
 // Last seen state per run file and announced stalls. Kept at module scope so
 // a run that finishes while the screen is locked (and the extension disabled)
@@ -37,7 +36,7 @@ export class TrainingModule extends Module {
         const error = await ensureDir(this._dir, this.cancellable);
         if (this.cancellable.is_cancelled()) return;
         if (error) {
-            this._message = `Cannot use ${this._dir}: ${error.message}`.slice(0, 200);
+            this._message = `cannot use ${this._dir}: ${error.message}`.slice(0, 200);
             this._ready = true;
             this.changed();
             return;
@@ -47,7 +46,7 @@ export class TrainingModule extends Module {
             this._monitor = dir.monitor_directory(Gio.FileMonitorFlags.WATCH_MOVES, this.cancellable);
             this._monitorSignal = this._monitor.connect('changed', (_m, file, other, event) => this._onEvent(file, other, event));
         } catch (e) {
-            this._message = `Cannot watch runs: ${e.message}`.slice(0, 200);
+            this._message = `cannot watch runs: ${e.message}`.slice(0, 200);
         }
         dir.enumerate_children_async('standard::name', Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_DEFAULT, this.cancellable,
             (_d, result) => {
@@ -124,7 +123,7 @@ export class TrainingModule extends Module {
 
     _summary(run) {
         const parts = [];
-        if (run.epoch !== null) parts.push(`Epoch ${run.epoch}${run.totalEpochs ? `/${run.totalEpochs}` : ''}`);
+        if (run.epoch !== null) parts.push(`epoch ${run.epoch}${run.totalEpochs ? `/${run.totalEpochs}` : ''}`);
         if (run.loss !== null) parts.push(`loss ${formatLoss(run.loss)}`);
         return parts.join(' · ');
     }
@@ -132,34 +131,38 @@ export class TrainingModule extends Module {
     // Newest first.
     _sorted() { return [...this._runs.values()].sort((a, b) => b.updatedAt - a.updatedAt); }
 
-    _active() {
-        return this._sorted().find(run => run.state === 'running');
+    // The chip follows a running run, else the newest one, so it agrees
+    // with the top of the deck.
+    _shown() {
+        const runs = this._sorted();
+        return runs.find(run => run.state === 'running') ?? runs[0] ?? null;
     }
 
     cell() {
-        const run = this._active();
+        const run = this._shown();
         const state = run ? runState(run, Date.now() / 1000, this._stallSeconds()) : null;
-        return {...super.cell(), icon: ICON, fraction: run ? runProgress(run) : null,
-            accent: state === 'stalled' ? 'watch' : MODULE_COLORS.training,
-            label: run ? formatLoss(run.loss) : '—', stale: state === 'stalled',
-            accessibleName: run ? `Training ${run.name}: ${state}, loss ${formatLoss(run.loss)}` : 'Training: no active run'};
+        const light = {running: 'working', stalled: 'waiting', crashed: 'failed'}[state] ?? 'off';
+        return {...super.cell(), badge: BADGES.training, meter: true, fraction: run ? runProgress(run) : null,
+            accent: MODULE_COLORS.training, light,
+            label: run ? formatLoss(run.loss) : '—', stale: state === 'stalled' || state === 'crashed',
+            accessibleName: run ? `Training ${run.name}: ${state}, loss ${formatLoss(run.loss)}` : 'Training: no runs'};
     }
 
     card(body, ui) {
         if (this._message) body.add_child(ui.label(this._message, 'ledge-warning'));
         if (!this._ready) {
-            body.add_child(ui.label('Reading runs…', 'ledge-muted'));
+            body.add_child(ui.label('reading runs…', 'ledge-caption'));
             return [];
         }
         const runs = this._sorted();
-        if (!runs.length) body.add_child(ui.label('No runs yet. Use tools/ledge_status.py in a training script.', 'ledge-muted'));
+        if (!runs.length) body.add_child(ui.label('no runs yet · report one with tools/ledge_status.py', 'ledge-caption'));
         const now = Date.now() / 1000;
         for (const run of runs.slice(0, CARD_RUNS)) {
             const state = runState(run, now, this._stallSeconds());
             const parts = [this._summary(run)];
-            if (state === 'running' && run.eta !== null) parts.push(`ETA ${formatDuration(run.eta)}`);
+            if (state === 'running' && run.eta !== null) parts.push(`eta ${formatDuration(run.eta)}`);
             parts.push(state === 'stalled' ? `stalled ${formatDuration(now - run.updatedAt)}` : state);
-            body.add_child(ui.row(run.name, {detail: parts.filter(Boolean).join(' · ')}));
+            body.add_child(ui.row(run.name, {detail: parts.filter(Boolean).join(' · '), mono: true}));
         }
         return [];
     }

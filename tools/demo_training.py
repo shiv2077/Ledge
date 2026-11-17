@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fake training run that reports to the Ledge notch, for trying the widget.
+"""Fake training run that reports to Ledge, for trying the training module.
 
     python3 tools/demo_training.py                  # finishes normally
     python3 tools/demo_training.py --crash          # crashes halfway

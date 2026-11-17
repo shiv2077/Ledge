@@ -13,38 +13,39 @@ export const THEME_NAMES = {
 };
 
 // Status colors that read on dark and on light backgrounds.
-const DARK_STATUS = {ample: '#00FF88', watch: '#F2FF00', critical: '#FF3F00', warning: '#ff855c'};
-const LIGHT_STATUS = {ample: '#0f8a3c', watch: '#8a6d00', critical: '#c62a1b', warning: '#b3400a'};
+const DARK_STATUS = {ample: '#3DDC97', watch: '#FFB020', critical: '#FF5A4D', warning: '#FF6B6B'};
+const LIGHT_STATUS = {ample: '#0f8a3c', watch: '#A86400', critical: '#c62a1b', warning: '#B3261E'};
 
-// Tokens: notch and card backgrounds, control (buttons, entries, focused
-// cells), text primary and secondary, border (hairlines, glass edge),
-// highlight (focus rings, active rows), shadow, ring and bar tracks, and the
-// status colors. Hover, focus, dim and selection shades are derived.
+// Tokens: rail and deck backgrounds, control (buttons, entries, hovered
+// chips), text primary and secondary, border (hairlines), highlight (focus
+// outlines, active rows), shadow, meterOff (unlit meter segments), led (an unlit
+// status light) and the status colors. Hover, focus, dim and selection shades
+// are derived.
 export const BUILT_IN = {
-    'midnight': {notch: '#000000', card: '#000000', control: '#242424', textPrimary: '#ffffff', textSecondary: '#a0a0a0',
-        border: '#303030', highlight: '#a0a0a0', shadow: '#00000052', ringTrack: '#303030', barTrack: '#2D2D2D', ...DARK_STATUS},
-    'graphite': {notch: '#1c1c1e', card: '#232326', control: '#303034', textPrimary: '#f2f2f7', textSecondary: '#a9a9b0',
-        border: '#3a3a3e', highlight: '#9a9aa2', shadow: '#00000059', ringTrack: '#3a3a3e', barTrack: '#36363a', ...DARK_STATUS},
-    'nord': {notch: '#2e3440', card: '#3b4252', control: '#434c5e', textPrimary: '#eceff4', textSecondary: '#b8c1d1',
-        border: '#4c566a', highlight: '#88c0d0', shadow: '#00000059', ringTrack: '#4c566a', barTrack: '#434c5e',
-        ample: '#a3be8c', watch: '#ebcb8b', critical: '#bf616a', warning: '#daa08e'},
-    'mocha': {notch: '#11111b', card: '#1e1e2e', control: '#313244', textPrimary: '#cdd6f4', textSecondary: '#a6adc8',
-        border: '#45475a', highlight: '#b4befe', shadow: '#00000066', ringTrack: '#45475a', barTrack: '#313244',
+    'midnight': {rail: '#0B0E12', deck: '#0A0D12', control: '#161B22', textPrimary: '#E8ECF2', textSecondary: '#7E8794',
+        border: '#232A33', highlight: '#9AA4B2', shadow: '#00000066', meterOff: '#232A33', led: '#495566', ...DARK_STATUS},
+    'graphite': {rail: '#1B1D21', deck: '#1F2226', control: '#2B2F35', textPrimary: '#ECEEF2', textSecondary: '#A3A9B3',
+        border: '#383D45', highlight: '#9AA4B2', shadow: '#00000059', meterOff: '#3b4149', led: '#59626d', ...DARK_STATUS},
+    'nord': {rail: '#2e3440', deck: '#3b4252', control: '#434c5e', textPrimary: '#eceff4', textSecondary: '#b8c1d1',
+        border: '#4c566a', highlight: '#88c0d0', shadow: '#00000059', meterOff: '#535e74', led: '#75819a',
+        ample: '#a3be8c', watch: '#ebcb8b', critical: '#d9747e', warning: '#daa08e'},
+    'mocha': {rail: '#11111b', deck: '#1e1e2e', control: '#313244', textPrimary: '#cdd6f4', textSecondary: '#a6adc8',
+        border: '#45475a', highlight: '#b4befe', shadow: '#00000066', meterOff: '#45475a', led: '#5b5e73',
         ample: '#a6e3a1', watch: '#f9e2af', critical: '#f38ba8', warning: '#fab387'},
-    'dracula': {notch: '#21222c', card: '#282a36', control: '#44475a', textPrimary: '#f8f8f2', textSecondary: '#bfc2d6',
-        border: '#44475a', highlight: '#bd93f9', shadow: '#00000066', ringTrack: '#44475a', barTrack: '#3a3c4e',
+    'dracula': {rail: '#21222c', deck: '#282a36', control: '#44475a', textPrimary: '#f8f8f2', textSecondary: '#bfc2d6',
+        border: '#44475a', highlight: '#bd93f9', shadow: '#00000066', meterOff: '#44475a', led: '#616681',
         ample: '#50fa7b', watch: '#f1fa8c', critical: '#ff5555', warning: '#ffb86c'},
-    'ocean': {notch: '#0b1628', card: '#0f1e36', control: '#1a2c4a', textPrimary: '#e6eef9', textSecondary: '#a3b6d1',
-        border: '#22385c', highlight: '#5aa9ff', shadow: '#00000066', ringTrack: '#22385c', barTrack: '#1c3050',
+    'ocean': {rail: '#0b1628', deck: '#0f1e36', control: '#1a2c4a', textPrimary: '#e6eef9', textSecondary: '#a3b6d1',
+        border: '#22385c', highlight: '#5aa9ff', shadow: '#00000066', meterOff: '#253d64', led: '#3f5c9b',
         ample: '#3ddc97', watch: '#ffd166', critical: '#ff5c5c', warning: '#ff9f6b'},
-    'snow': {notch: '#f5f5f7', card: '#ffffff', control: '#ececf0', textPrimary: '#1d1d1f', textSecondary: '#55555c',
-        border: '#d8d8de', highlight: '#0a64d8', shadow: '#0000002e', ringTrack: '#dcdce2', barTrack: '#e4e4ea', ...LIGHT_STATUS},
-    // Glass themes: notch and card are the tint, drawn over the blur at the
-    // user's tint opacity; controls and tracks are translucent overlays.
-    'frosted-dark': {notch: '#1c1c1e', card: '#1c1c1e', control: '#ffffff1f', textPrimary: '#ffffff', textSecondary: '#d4d4da',
-        border: '#ffffff3d', highlight: '#e0e0e6', shadow: '#00000059', ringTrack: '#ffffff33', barTrack: '#ffffff26', ...DARK_STATUS},
-    'frosted-light': {notch: '#f2f2f5', card: '#f2f2f5', control: '#00000014', textPrimary: '#111114', textSecondary: '#333338',
-        border: '#ffffffb3', highlight: '#0a64d8', shadow: '#00000038', ringTrack: '#0000001f', barTrack: '#00000017', ...LIGHT_STATUS},
+    'snow': {rail: '#f5f5f7', deck: '#ffffff', control: '#ececf0', textPrimary: '#1d1d1f', textSecondary: '#55555c',
+        border: '#d8d8de', highlight: '#0a64d8', shadow: '#0000002e', meterOff: '#c8c8d2', led: '#9999a7', ...LIGHT_STATUS},
+    // Glass themes: rail and deck are the tint, drawn over the blur at the
+    // user's tint opacity; controls and unlit marks are translucent overlays.
+    'frosted-dark': {rail: '#14181d', deck: '#14181d', control: '#ffffff1f', textPrimary: '#ffffff', textSecondary: '#d4d8de',
+        border: '#ffffff3d', highlight: '#e0e4ea', shadow: '#00000059', meterOff: '#ffffff33', led: '#ffffff5f', ...DARK_STATUS},
+    'frosted-light': {rail: '#f2f2f5', deck: '#f2f2f5', control: '#00000014', textPrimary: '#111114', textSecondary: '#333338',
+        border: '#ffffffb3', highlight: '#0a64d8', shadow: '#00000038', meterOff: '#00000031', led: '#00000069', ...LIGHT_STATUS},
 };
 
 export const GLASS_THEMES = ['frosted-dark', 'frosted-light'];
@@ -61,9 +62,12 @@ export const GNOME_ACCENTS = {
     red: '#e62d42', pink: '#d56199', purple: '#9141ac', slate: '#6f8396',
 };
 
-// Contrast targets (WCAG): body text 4.5:1, rings and other marks 3:1.
+// Contrast targets (WCAG): body text 4.5:1, meters and other marks 3:1.
 export const TEXT_CONTRAST = 4.5;
 export const MARK_CONTRAST = 3;
+// Unlit marks stay visible but quieter than any reading: unlit meter
+// segments and the off status light.
+export const OFF_CONTRAST = {meterOff: 1.3, led: 2.5};
 
 // Glass: the tint sits over a blurred backdrop that can be anything, so text
 // is checked against the tint over black and over white at this brightness.
@@ -174,7 +178,7 @@ export function systemPalette(desktop) {
     const dark = desktop.colorScheme === 'prefer-dark' || (desktop.colorScheme !== 'prefer-light' && yaru.dark);
     const accent = GNOME_ACCENTS[desktop.accentColor] ?? yaru.accent ?? '#3584e4';
     const base = BUILT_IN[dark ? 'graphite' : 'snow'];
-    return {...base, highlight: accent, ringTrack: mix(base.ringTrack, accent, 0.3)};
+    return {...base, highlight: accent};
 }
 
 // A color meeting `target` against every background: the color itself, a
@@ -192,25 +196,26 @@ export function fitAll(color, backgrounds, target) {
 
 const desktops = color => rgba(color)[3] < 1 ? [over(color, '#000000'), over(color, '#ffffff')] : [over(color, '#000000')];
 
-// custom: {background, card, text, highlight, opacity}. A translucent card
+// custom: {background, card, text, highlight, opacity}. A translucent deck
 // shows the desktop through it, so the opacity is raised until some text
 // color reads over both a black and a white desktop.
 export function customPalette(custom) {
-    const card = custom.card, notch = custom.background;
-    const readable = op => [card, notch].every(c => {
+    const deck = custom.card, rail = custom.background;
+    const readable = op => [deck, rail].every(c => {
         const bgs = desktops(withAlpha(c, op));
         return Math.max(...['#ffffff', '#000000'].map(t => Math.min(...bgs.map(bg => contrast(t, bg))))) >= TEXT_CONTRAST;
     });
     let opacity = Math.max(0.3, Math.min(1, custom.opacity));
     while (opacity < 1 && !readable(opacity)) opacity = Math.min(1, opacity + 0.05);
-    const text = fitAll(custom.text, desktops(withAlpha(card, opacity)), TEXT_CONTRAST);
-    const light = luminance(card) > 0.4;
+    const text = fitAll(custom.text, desktops(withAlpha(deck, opacity)), TEXT_CONTRAST);
+    const light = luminance(deck) > 0.4;
     return {
-        notch: withAlpha(notch, opacity), card: withAlpha(card, opacity),
-        control: mix(card, text, 0.1), textPrimary: text,
-        textSecondary: ensureContrast(mix(text, card, 0.35), card, TEXT_CONTRAST),
-        border: mix(card, text, 0.18), highlight: custom.highlight,
-        shadow: light ? '#0000002e' : '#00000066', ringTrack: mix(notch, text, 0.2), barTrack: mix(card, text, 0.14),
+        rail: withAlpha(rail, opacity), deck: withAlpha(deck, opacity),
+        control: mix(deck, text, 0.1), textPrimary: text,
+        textSecondary: ensureContrast(mix(text, deck, 0.35), deck, TEXT_CONTRAST),
+        border: mix(deck, text, 0.18), highlight: custom.highlight,
+        shadow: light ? '#0000002e' : '#00000066',
+        meterOff: ensureContrast(mix(deck, text, 0.16), deck, OFF_CONTRAST.meterOff), led: ensureContrast(mix(deck, text, 0.26), deck, OFF_CONTRAST.led),
         ...(light ? LIGHT_STATUS : DARK_STATUS),
     };
 }
@@ -226,16 +231,16 @@ export function resolveTheme(params) {
     else t = {...BUILT_IN[id]};
 
     // Backgrounds text and marks are judged against.
-    let cardBg = desktops(t.card), notchBg = desktops(t.notch);
+    let deckBg = desktops(t.deck), railBg = desktops(t.rail);
     if (glass) {
         const tint = Math.max(GLASS_TINT_MIN, params.glass.tint);
-        t.notch = withAlpha(t.notch, tint);
-        t.card = withAlpha(t.card, tint);
-        cardBg = notchBg = glassBackdrops(BUILT_IN[id].card, tint, params.glass.brightness);
+        t.rail = withAlpha(t.rail, tint);
+        t.deck = withAlpha(t.deck, tint);
+        deckBg = railBg = glassBackdrops(BUILT_IN[id].deck, tint, params.glass.brightness);
     }
-    t.textPrimary = fitAll(t.textPrimary, [...cardBg, ...notchBg], TEXT_CONTRAST);
-    t.textSecondary = fitAll(t.textSecondary, cardBg, TEXT_CONTRAST);
-    t.warning = fitAll(t.warning, cardBg, TEXT_CONTRAST);
+    t.textPrimary = fitAll(t.textPrimary, [...deckBg, ...railBg], TEXT_CONTRAST);
+    t.textSecondary = fitAll(t.textSecondary, [...deckBg, ...railBg], TEXT_CONTRAST);
+    t.warning = fitAll(t.warning, deckBg, TEXT_CONTRAST);
 
     // Light when dark text is what reads.
     const light = luminance(t.textPrimary) < 0.2;
@@ -245,20 +250,22 @@ export function resolveTheme(params) {
         controlHover: mix(t.control, t.textPrimary, 0.073),
         controlFocus: mix(t.control, t.textPrimary, 0.128),
         selection: mix(t.control, t.textPrimary, 0.2),
-        textDim: mix(t.textSecondary, over(t.card, light ? '#ffffff' : '#000000'), 0.3),
+        textDim: mix(t.textSecondary, over(t.deck, light ? '#ffffff' : '#000000'), 0.3),
         // Accents keep their hue; only lightness moves when contrast is low.
-        accent: (color, where = 'notch') => fitAll(t[color] ?? color, where === 'card' ? cardBg : notchBg, MARK_CONTRAST),
+        accent: (color, where = 'rail') => fitAll(t[color] ?? color, where === 'deck' ? deckBg : railBg, MARK_CONTRAST),
+        // The same accent at text contrast, for letters such as badge monograms.
+        accentText: (color, where = 'rail') => fitAll(t[color] ?? color, where === 'deck' ? deckBg : railBg, TEXT_CONTRAST),
     };
 }
 
-// Swatch colors for the prefs picker: background, card, accent line, text.
+// Swatch colors for the prefs picker: rail, deck, highlight, text.
 export function swatch(tokens) {
-    return [tokens.notch, tokens.card, tokens.highlight, tokens.textPrimary];
+    return [tokens.rail, tokens.deck, tokens.highlight, tokens.textPrimary];
 }
 
 // ---- stylesheet ----
 
-const css = color => {
+export const cssColor = color => {
     const [r, g, b, a] = rgba(color);
     return `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, ${+a.toFixed(3)})`;
 };
@@ -271,27 +278,28 @@ export function themeCss(t) {
 }
 
 function themeRules(t) {
-    const focusRing = `box-shadow: inset 0 0 0 1px ${css(t.highlight)};`;
-    const cardBorder = t.glass ? `border: 1px solid ${css(t.border)};` : '';
+    const focusRing = `box-shadow: inset 0 0 0 1px ${cssColor(t.highlight)};`;
     return `
-.ledge-cell:focus { background-color: ${css(t.control)}; }
-.ledge-percent, .ledge-title, .ledge-window-title, .ledge-row-title, .ledge-settings, .ledge-cell-icon { color: ${css(t.textPrimary)}; }
-.ledge-detail { background-color: ${css(t.card)}; color: ${css(t.textPrimary)}; box-shadow: 0 6px 18px 0 ${css(t.shadow)}; ${cardBorder} }
-.ledge-muted, .ledge-section { color: ${css(t.textSecondary)}; }
-.ledge-warning { color: ${css(t.warning)}; }
-.ledge-hairline { background-color: ${css(t.border)}; }
-.ledge-action, .ledge-small-action { background-color: ${css(t.control)}; color: ${css(t.textPrimary)}; }
-.ledge-action:hover, .ledge-small-action:hover { background-color: ${css(t.controlHover)}; }
-.ledge-action:focus, .ledge-small-action:focus { background-color: ${css(t.controlFocus)}; ${focusRing} }
-.ledge-row { color: ${css(t.textPrimary)}; }
-.ledge-row:hover, .ledge-row-active { background-color: ${css(t.control)}; }
-.ledge-row:focus { background-color: ${css(t.controlHover)}; ${focusRing} }
-.ledge-dim { color: ${css(t.textDim)}; }
-.ledge-entry { background-color: ${css(t.control)}; color: ${css(t.textPrimary)}; caret-color: ${css(t.textPrimary)}; selection-background-color: ${css(t.selection)}; selected-color: ${css(t.textPrimary)}; }
-.ledge-entry .hint-text { color: ${css(t.textSecondary)}; }
+.ledge-readout, .ledge-deck-title, .ledge-body, .ledge-row-title, .ledge-chip-icon { color: ${cssColor(t.textPrimary)}; }
+.ledge-deck { color: ${cssColor(t.textPrimary)}; box-shadow: 0 8px 24px 0 ${cssColor(t.shadow)}; }
+.ledge-caption, .ledge-section, .ledge-stamp, .ledge-figure { color: ${cssColor(t.textSecondary)}; }
+.ledge-warning { color: ${cssColor(t.warning)}; }
+.ledge-watch { color: ${cssColor(t.accent('watch', 'deck'))}; }
+.ledge-hairline { background-color: ${cssColor(t.border)}; }
+.ledge-action { color: ${cssColor(t.textSecondary)}; }
+.ledge-action:hover, .ledge-action:focus { color: ${cssColor(t.textPrimary)}; }
+.ledge-small-action { background-color: ${cssColor(t.control)}; color: ${cssColor(t.textPrimary)}; }
+.ledge-small-action:hover { background-color: ${cssColor(t.controlHover)}; }
+.ledge-small-action:focus { background-color: ${cssColor(t.controlFocus)}; ${focusRing} }
+.ledge-row { color: ${cssColor(t.textPrimary)}; }
+.ledge-row:hover, .ledge-row-active { background-color: ${cssColor(t.control)}; }
+.ledge-row:focus { background-color: ${cssColor(t.controlHover)}; ${focusRing} }
+.ledge-dim { color: ${cssColor(t.textDim)}; }
+.ledge-entry { background-color: ${cssColor(t.control)}; color: ${cssColor(t.textPrimary)}; caret-color: ${cssColor(t.textPrimary)}; selection-background-color: ${cssColor(t.selection)}; selected-color: ${cssColor(t.textPrimary)}; }
+.ledge-entry .hint-text { color: ${cssColor(t.textSecondary)}; }
 .ledge-entry:focus { ${focusRing} }
-.ledge-icon-button { color: ${css(t.textSecondary)}; }
-.ledge-icon-button:hover { background-color: ${css(t.controlHover)}; color: ${css(t.textPrimary)}; }
-.ledge-icon-button:focus { background-color: ${css(t.controlFocus)}; color: ${css(t.textPrimary)}; }
+.ledge-icon-button { color: ${cssColor(t.textSecondary)}; }
+.ledge-icon-button:hover { background-color: ${cssColor(t.controlHover)}; color: ${cssColor(t.textPrimary)}; }
+.ledge-icon-button:focus { background-color: ${cssColor(t.controlFocus)}; color: ${cssColor(t.textPrimary)}; }
 `;
 }

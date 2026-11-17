@@ -1,0 +1,536 @@
+// Smoke harness: wraps the real extension inside a headless GNOME Shell and
+// drives it with demo data. scripts/smoke.py installs this as extension.js.
+import Ledge from './implementation.js';
+import {usageSource} from './modules/usage.js';
+import {rgba} from './themes.js';
+import {CHAMFER, DECK, TICK, MOTION, railSize} from './design.js';
+import GLib from 'gi://GLib';
+import Gio from 'gi://Gio';
+import Shell from 'gi://Shell';
+import Clutter from 'gi://Clutter';
+import St from 'gi://St';
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+
+const output = GLib.getenv('LEDGE_SMOKE_OUTPUT');
+const delay = ms => new Promise(resolve => GLib.timeout_add(GLib.PRIORITY_DEFAULT, ms, () => { resolve(); return GLib.SOURCE_REMOVE; }));
+const assert = (value, message) => { if (!value) throw new Error(message); };
+const EDGES = ['right', 'top', 'left', 'bottom'];
+const IDS = ['claude', 'cursor', 'codex', 'power', 'todo', 'models', 'github', 'training'];
+const PAD = 48;
+const checks = [];
+const crops = {};
+const done = name => { checks.push(name); console.log(`SMOKE done: ${name}`); };
+
+export default class Smoke extends Ledge {
+    enable() {
+        this.getSettings().set_boolean('demo', true);
+        this.getSettings().set_boolean('always-show', true);
+        super.enable();
+        this.runSmoke().catch(error => GLib.file_set_contents(`${output}/result.json`,
+            JSON.stringify({ok: false, error: String(error), stack: error.stack, passed: checks, crops})));
+    }
+
+    get R() { return this._placement; }
+
+    // Screenshot of the rail and deck with some padding, or of `box`. The
+    // whole stage is captured and scripts/smoke.py crops it afterwards: an
+    // area capture paints offscreen, where a background blur reads nothing.
+    async capture(name, box = null) {
+        const actors = [this.R.actor, this.R.sensor, ...this.R.deck.visible ? [this.R.deck.actor] : []];
+        const x0 = box?.x ?? Math.min(...actors.map(a => a.x)) - PAD;
+        const y0 = box?.y ?? Math.min(...actors.map(a => a.y)) - PAD;
+        const x1 = box ? box.x + box.width : Math.max(...actors.map(a => a.x + a.width)) + PAD;
+        const y1 = box ? box.y + box.height : Math.max(...actors.map(a => a.y + a.height)) + PAD;
+        const x = Math.max(0, Math.round(x0)), y = Math.max(0, Math.round(y0));
+        const width = Math.min(global.stage.width, Math.round(x1)) - x, height = Math.min(global.stage.height, Math.round(y1)) - y;
+        crops[name] = {x, y, width, height};
+        const stream = Gio.File.new_for_path(`${output}/${name}.png`).replace(null, false, Gio.FileCreateFlags.NONE, null);
+        const shot = new Shell.Screenshot();
+        await new Promise((resolve, reject) => shot.screenshot(false, stream, (object, result) => {
+            try { object.screenshot_finish(result); stream.close(null); resolve(); } catch (error) { reject(error); }
+        }));
+    }
+
+    footerInset() {
+        const content = this.R.deck._content;
+        const footer = content.get_last_child();
+        return this.R.deck.actor.height - footer.y - footer.height;
+    }
+
+    // The deck sits flush against the rail on the side that touches it.
+    deckFlush(edge) {
+        const rail = this.R.actor, deck = this.R.deck.actor;
+        if (edge === 'right') return deck.x + deck.width === rail.x;
+        if (edge === 'left') return deck.x === rail.x + rail.width;
+        if (edge === 'top') return deck.y === rail.y + rail.height;
+        return deck.y + deck.height === rail.y;
+    }
+
+    attached(edge) {
+        const a = this.R._area(), h = this.R.actor;
+        return edge === 'right' ? Math.abs(h.x + h.width - a.x - a.width) : edge === 'left' ? Math.abs(h.x - a.x)
+            : edge === 'top' ? Math.abs(h.y - a.y) : Math.abs(h.y + h.height - a.y - a.height);
+    }
+
+    async checkWorkspaceDismissal() {
+        const manager = global.workspace_manager;
+        const first = manager.get_workspace_by_index(0);
+        const second = manager.get_workspace_by_index(1);
+        assert(second, 'Workspace fixture has a second workspace');
+        for (const initiallyOpen of [false, true]) {
+            this.R.open('claude', true);
+            await delay(100);
+            if (!initiallyOpen) {
+                this.R.close();
+                // Shell revisits tracked chrome visibility after fullscreen/Overview changes.
+                Main.layoutManager._updateVisibility();
+                assert(!this.R.deck.visible, 'Shell visibility update must not resurrect a dismissed deck');
+            }
+            second.activate(global.get_current_time());
+            await delay(650);
+            assert(manager.get_active_workspace() === second, 'Switched to second workspace');
+            assert(!this.R.deck.visible, `${initiallyOpen ? 'Open' : 'Dismissed'} deck must stay closed after workspace switch`);
+            first.activate(global.get_current_time());
+            await delay(650);
+            assert(!this.R.deck.visible, 'Returning to workspace must not resurrect the deck');
+        }
+        done('workspace switch dismissal and return');
+    }
+
+    async checkModules() {
+        assert(this.R.strip.keys().join() === IDS.join() && IDS.every(id => this._modules.has(id)), 'Every module has a chip, in order');
+        const chip = id => this.R.strip.chips.get(id);
+        assert(chip('claude').info.badge === 'CL' && chip('cursor').info.badge === 'CU' && chip('codex').info.badge === 'CX', 'Providers show monogram badges');
+        assert(chip('claude')._meter.visible && !chip('power')._meter.visible, 'Only modules with a fraction show a chip meter');
+        assert(chip('cursor').info.light === 'waiting' && chip('claude').info.light === 'working' && chip('power').info.light === 'off', 'Lights follow session state');
+        for (const id of IDS) assert(chip(id).actor.width === 96 && chip(id).actor.height === 36, `${id}: chip is 96 by 36`);
+        const icons = new St.IconTheme();
+        for (const id of IDS) {
+            const icon = chip(id).info.icon;
+            assert(!icon || icons.has_icon(icon), `${id}: icon ${icon} exists in the icon theme`);
+        }
+        const header = () => this.R.deck._content.get_first_child();
+        this.R.open('claude', true);
+        await delay(200);
+        const [title, context] = header().get_children();
+        assert(title.text === 'Claude Code' && context.text === '· 1 session', `Deck header names the module and its context, got ${title.text} ${context.text}`);
+        assert(title.width >= title.get_preferred_width(-1)[1] - 0.5, 'Deck title gets its full width');
+        this.R.close();
+        // Mono readouts: digits share one width, so values do not jitter.
+        const widths = ['111%', '000%', '888%'].map(text => {
+            const label = new St.Label({text, style_class: 'ledge-readout'});
+            Main.uiGroup.add_child(label);
+            const width = label.get_preferred_width(-1)[1];
+            label.destroy();
+            return width;
+        });
+        assert(widths[0] === widths[1] && widths[1] === widths[2], `Readout digits share one width, got ${widths}`);
+        // Lights: waiting blinks three times then stays lit; done blinks twice then goes off.
+        const savedSessions = usageSource().sessions;
+        const light = chip('claude')._light;
+        const setSessions = state => {
+            usageSource().sessions = id => id === 'claude' ? [{state, name: 'Smoke', detail: '', waitingFor: '', derived: false}] : savedSessions.call(usageSource(), id);
+            this._changed(this._modules.get('claude'));
+        };
+        setSessions('waiting');
+        await delay(60);
+        assert(chip('claude').info.light === 'waiting' && light._ledgeBlink, 'Entering waiting starts a blink');
+        await delay(900);
+        assert(!light._ledgeBlink && light.opacity === 255, 'Waiting light stays lit after three blinks');
+        setSessions('busy');
+        await delay(60);
+        setSessions('idle');
+        await delay(60);
+        assert(chip('claude').info.light === 'off' && light._ledgeBlink, 'Finishing work blinks the light');
+        await delay(700);
+        const off = light.get_theme_node().get_background_color();
+        const led = rgba(this._theme.led).map(v => Math.round(v * 255));
+        assert(!light._ledgeBlink && [off.red, off.green, off.blue].every((v, i) => Math.abs(v - led[i]) <= 2), 'Done light ends off');
+        usageSource().sessions = savedSessions;
+        this._changed(this._modules.get('claude'));
+        await delay(100);
+        done('chips, badges, meters and lights');
+
+        const data = `${GLib.get_user_data_dir()}/ledge`;
+        // Todo: typing into the deck entry and Enter add an item that is saved.
+        const todo = this._modules.get('todo');
+        this.R.open('todo');
+        await delay(250);
+        const entry = this.R.deck.autofocus;
+        assert(entry instanceof St.Entry && this.R.focusTargets().includes(entry), 'Todo entry is keyboard reachable');
+        entry.grab_key_focus();
+        entry.set_text('smoke item');
+        entry.clutter_text.emit('activate');
+        await delay(400);
+        assert(todo.cell().label === '1', `Todo count follows adds, got ${todo.cell().label}`);
+        assert(this.R.deck.autofocus !== entry && this.R.deck.autofocus.contains(global.stage.get_key_focus()), 'New entry keeps focus after the deck rebuilds');
+        const saved = JSON.parse(new TextDecoder().decode(GLib.file_get_contents(`${data}/todos.json`)[1]));
+        assert(saved.length === 1 && saved[0].text === 'smoke item', 'Todo saved to disk');
+        global.stage.set_key_focus(null);
+        done('todo typing and save');
+        // Training: an atomic rename into runs/ is picked up by the monitor.
+        const writeRun = fields => {
+            const tmp = `${data}/runs/.smoke.json.tmp`;
+            GLib.file_set_contents(tmp, JSON.stringify({name: 'smoke', epoch: 2, total_epochs: 4, step: 10, loss: 0.5,
+                eta_seconds: 120, updated_at: Date.now() / 1000, ...fields}));
+            Gio.File.new_for_path(tmp).move(Gio.File.new_for_path(`${data}/runs/smoke.json`), Gio.FileCopyFlags.OVERWRITE, null, null);
+        };
+        writeRun({state: 'running'});
+        await delay(600);
+        const training = this._modules.get('training');
+        assert(training.cell().label === '0.500' && training.cell().fraction === 0.5 && training.cell().light === 'working',
+            `Training chip shows the run, got ${JSON.stringify(training.cell())}`);
+        this.R.open('training', true);
+        await delay(200);
+        await this.capture('deck-training-running');
+        writeRun({state: 'done', epoch: 4});
+        await delay(600);
+        assert(training.cell().label === '0.500' && training.cell().fraction === 1 && training.cell().light === 'off',
+            `Finished run stays on the chip with its light off, got ${JSON.stringify(training.cell())}`);
+        writeRun({state: 'crashed', epoch: 3});
+        await delay(600);
+        assert(training.cell().light === 'failed' && training.cell().stale, 'Crashed run lights the chip as failed');
+        writeRun({state: 'done', epoch: 4});
+        await delay(600);
+        done('training file events');
+        // Every deck renders with its footer inside the padding.
+        for (const id of IDS) {
+            this.R.open(id, true);
+            await delay(150);
+            assert(this.R.deck.actor.width === DECK.width, `${id}: deck is ${DECK.width} wide`);
+            assert(Math.abs(this.footerInset() - DECK.padding) <= 1, `${id}: deck footer inset, got ${this.footerInset()}`);
+            assert(this.deckFlush('right'), `${id}: deck is flush against the rail`);
+            const footer = this.R.deck._content.get_last_child();
+            assert(footer.get_last_child().label === 'settings', `${id}: settings is the last footer action`);
+        }
+        this.R.close();
+        done('every deck');
+    }
+
+    async checkThemes() {
+        // A striped backdrop makes glass and contrast visible in the screenshots.
+        const stripes = new St.Widget({x: 1300, y: 0, width: 620, height: 1080,
+            style: 'background-gradient-direction: horizontal; background-gradient-start: #ff3b30; background-gradient-end: #34c759;'});
+        for (let i = 0; i < 60; i++)
+            stripes.add_child(new St.Widget({x: 0, y: i * 18, width: 620, height: 9, style: 'background-color: #ffffff;'}));
+        global.window_group.add_child(stripes);
+        const same = (color, want) => ['red', 'green', 'blue', 'alpha'].every((c, i) => Math.abs(color[c] - want[i]) <= 2);
+        for (const theme of ['graphite', 'snow', 'nord', 'mocha', 'dracula', 'ocean', 'frosted-dark', 'frosted-light', 'system', 'custom', 'midnight']) {
+            this._settings.set_string('theme', theme);
+            await delay(500);
+            assert(this._theme.id === theme, `${theme} resolved`);
+            this.R.open('claude', true);
+            await delay(300);
+            const title = this.R.deck._content.get_first_child().get_first_child();
+            const want = rgba(this._theme.textPrimary).map(v => Math.round(v * 255));
+            const got = title.get_theme_node().get_foreground_color();
+            assert(same(got, want), `${theme}: generated stylesheet wins, title ${[got.red, got.green, got.blue, got.alpha]} want ${want}`);
+            assert(Boolean(this.R.actor.get_effect('ledge-blur')) === this._theme.glass && Boolean(this.R.deck.actor.get_effect('ledge-blur')) === this._theme.glass,
+                `${theme}: glass effects exactly when frosted`);
+            await this.capture(`theme-${theme}`);
+        }
+        // An open deck follows a theme change without closing.
+        this.R.open('power', true);
+        await delay(200);
+        this._settings.set_string('theme', 'snow');
+        await delay(400);
+        assert(this.R.deck.visible && this.R.deck.key === 'power', 'Open deck survives a theme change');
+        this._settings.set_string('theme', 'midnight');
+        await delay(400);
+        this.R.close();
+        stripes.destroy();
+        done('every theme, generated stylesheet, glass presence');
+    }
+
+    async checkWrappedWarnings() {
+        // Wrapped provider warnings must take part in the deck's natural height.
+        const savedReadings = usageSource().readings;
+        const savedSessions = usageSource().sessions;
+        usageSource().sessions = () => []; // Keep background activity polling out of this layout fixture.
+        const warning = 'Claude Code credentials have expired; use Claude Code to refresh them';
+        for (const edge of EDGES) {
+            this._settings.set_string('edge', edge);
+            await delay(150);
+            const heights = [];
+            for (const message of [warning, `${warning}. ${warning}.`, 'Usage unavailable']) {
+                usageSource().readings = savedReadings.map(p => p.id === 'claude' ? {...p, status: 'stale', message} : p);
+                this._changed(this._modules.get('claude'));
+                await delay(50);
+                this.R.open('claude', true);
+                await delay(200);
+                assert(Math.abs(this.footerInset() - DECK.padding) <= 1, `${edge}: wrapped warning keeps the footer inset, got ${this.footerInset()}`);
+                heights.push(this.R.deck.actor.height);
+                if (edge === 'right' && message === warning) await this.capture('wrapped-warning');
+            }
+            assert(heights[1] > heights[0] && heights[2] < heights[0], `${edge}: deck grows and shrinks with wrapped content (${heights})`);
+        }
+        usageSource().readings = savedReadings;
+        usageSource().sessions = savedSessions;
+        this._changed(this._modules.get('claude'));
+        this.R.close();
+        this._settings.set_string('edge', 'right');
+        await delay(300);
+        done('wrapped warning height across four edges');
+    }
+
+    // Tick, mid-unfold, full rail and every deck, on each edge.
+    async checkEdges(move) {
+        const placements = [];
+        for (const edge of EDGES) {
+            const vertical = edge === 'left' || edge === 'right';
+            this._settings.set_string('edge', edge);
+            this._settings.set_boolean('always-show', false);
+            move(900, 500);
+            await delay(700);
+            const rail = this.R.actor;
+            const [depth, length] = vertical ? [rail.width, rail.height] : [rail.height, rail.width];
+            assert(depth === TICK.thickness && length === TICK.length, `${edge}: tick is 4 by 44, got ${depth} by ${length}`);
+            assert(this.attached(edge) <= 1, `${edge}: tick sits flush with the edge`);
+            assert(this.R._tickLight.visible && !this.R.strip.actor.visible, `${edge}: tick shows one light and no chips`);
+            await this.capture(`tick-${edge}`);
+            const sensor = this.R.sensor;
+            move(sensor.x + sensor.width / 2, sensor.y + sensor.height / 2);
+            await delay(MOTION.hoverIntent + 110);
+            const mid = vertical ? rail.width : rail.height;
+            const full = railSize(IDS.length, vertical);
+            assert((vertical ? rail.height : rail.width) > TICK.length && mid < full.depth, `${edge}: unfold passes through intermediate sizes`);
+            await this.capture(`unfold-${edge}`);
+            await delay(700);
+            assert((vertical ? rail.width : rail.height) === full.depth && (vertical ? rail.height : rail.width) === full.length,
+                `${edge}: rail unfolds to ${full.depth} by ${full.length}`);
+            for (const chip of this.R.strip.chips.values())
+                assert(chip.actor.opacity === 255 && chip.actor.translation_x === 0 && chip.actor.translation_y === 0 && chip._power === 1,
+                    `${edge}: chips land and meters finish powering on`);
+            const a = this.R._area();
+            assert(rail.x >= a.x && rail.y >= a.y && rail.x + rail.width <= a.x + a.width + 1 && rail.y + rail.height <= a.y + a.height + 1, `${edge}: rail fits the work area`);
+            await this.capture(`rail-${edge}`);
+            this._settings.set_boolean('always-show', true);
+            await delay(200);
+            for (const id of IDS) {
+                this.R.open(id);
+                await delay(260);
+                const deck = this.R.deck.actor;
+                assert(this.deckFlush(edge), `${edge} ${id}: deck is flush against the rail, no gap and no tail`);
+                const vert = edge === 'left' || edge === 'right';
+                const [rs, rl, ds, dl] = vert ? [rail.y, rail.height, deck.y, deck.height] : [rail.x, rail.width, deck.x, deck.width];
+                assert(ds >= rs + CHAMFER.large && (dl > rl - 2 * CHAMFER.large || ds + dl <= rs + rl - CHAMFER.large),
+                    `${edge} ${id}: deck stays on the rail's straight side (${ds}+${dl} on ${rs}+${rl})`);
+                assert(deck.x >= a.x && deck.y >= a.y && deck.x + deck.width <= a.x + a.width && deck.y + deck.height <= a.y + a.height, `${edge} ${id}: deck stays inside the work area`);
+                assert(deck.translation_x === 0 && deck.translation_y === 0, `${edge} ${id}: deck motion settles`);
+                assert(this.R.deck.side === edge && this.R.strip.chips.get(id).open, `${edge} ${id}: deck docks on the rail side and marks its chip`);
+                for (const child of this.R.deck._content.get_children())
+                    assert(child.x >= DECK.padding - 1 && child.x + child.width <= deck.width - DECK.padding + 1, `${edge} ${id}: content respects the padding`);
+                assert(this.R.focusTargets().includes(this.R.deck._content.get_last_child().get_first_child()), `${edge} ${id}: footer actions are keyboard reachable`);
+                await this.capture(`deck-${edge}-${id}`);
+            }
+            placements.push({edge, x: rail.x, y: rail.y, width: rail.width, height: rail.height});
+            this.R.close();
+        }
+        this._settings.set_string('edge', 'right');
+        await delay(400);
+        done('tick, unfold, rail and every deck on four edges');
+        return placements;
+    }
+
+    async checkPointer(move) {
+        this._settings.set_boolean('always-show', false);
+        move(900, 500);
+        await delay(700);
+        const rail = this.R.actor;
+        assert(rail.width === TICK.thickness && rail.height === TICK.length, 'Folded rail is the tick');
+        // An idle, folded Ledge draws nothing: count repaints of its own canvases.
+        let repaints = 0;
+        const watched = this.R.canvases().map(area => [area, area.connect('repaint', () => repaints++)]);
+        await delay(2000);
+        for (const [area, id] of watched) area.disconnect(id);
+        assert(repaints === 0, `Idle folded Ledge must not repaint, saw ${repaints} repaints`);
+        done('idle folded repaint count is zero');
+        // A pointer crossing the edge leaves before the hover intent fires.
+        const sensor = this.R.sensor;
+        const tick = [sensor.x + sensor.width / 2, sensor.y + sensor.height / 2];
+        move(...tick);
+        await delay(30);
+        move(900, 500);
+        await delay(400);
+        assert(!this.R._expanded && rail.width === TICK.thickness, 'A crossing pointer does not unfold the rail');
+        // The hot zone reaches 8 px past the tick.
+        move(sensor.x + 1, tick[1]);
+        await delay(MOTION.hoverIntent + 60);
+        assert(this.R._expanded, 'Resting in the hot zone unfolds the rail');
+        const firstChip = this.R.strip.actor.get_first_child();
+        await delay(700);
+        assert(this.R.strip.actor.get_first_child() === firstChip, 'Animation preserves chip actors');
+        assert(rail.width === railSize(IDS.length, true).depth && !this.R._timeline, 'Unfold settles at full size');
+        // Reverse the fold while it is still in flight.
+        move(900, 500);
+        await delay(MOTION.foldGrace + 170);
+        assert(this.R._length > 0 && this.R._length < 1, `Pointer departure starts folding after the grace period, length ${this.R._length}`);
+        move(rail.x + rail.width - 2, rail.y + rail.height / 2);
+        await delay(800);
+        assert(this.R._length === 1 && !this.R._timeline, 'Re-entry reverses and settles');
+        // Hovering a chip opens its deck; moving along the rail switches it.
+        const centre = id => {
+            const actor = this.R.strip.chips.get(id).actor;
+            const [x, y] = actor.get_transformed_position();
+            return [x + actor.width / 2, y + actor.height / 2];
+        };
+        move(...centre('cursor'));
+        await delay(300);
+        assert(this.R.deck.visible && this.R.deck.key === 'cursor', 'Hovering a chip opens its deck');
+        const y0 = this.R.deck.actor.y;
+        move(...centre('models'));
+        await delay(40);
+        move(...centre('training'));
+        await delay(320);
+        assert(this.R.deck.key === 'training' && this.R.deck.visible, 'Rapid switching selects the latest chip');
+        assert(this.R.deck.actor.y !== y0, 'Deck follows the selected chip');
+        assert(this.R.deck.actor.translation_x === 0 && this.R.deck.actor.translation_y === 0, 'Deck motion settles');
+        await this.capture('hover-deck');
+        // The deck holds the rail open; leaving both folds after the grace period.
+        move(this.R.deck.actor.x + 40, this.R.deck.actor.y + 40);
+        await delay(MOTION.foldGrace + 300);
+        assert(this.R.deck.visible && this.R._expanded, 'Pointer inside the deck keeps it open');
+        move(900, 500);
+        await delay(MOTION.foldGrace + 700);
+        assert(!this.R.deck.visible && !this.R._deckMounted && rail.width === TICK.thickness, 'Leaving folds the rail and closes the deck');
+        done('hover intent, hot zone, unfold, interrupted fold, chip hover');
+        // Keyboard: Tab walks chips and deck controls, Escape closes.
+        this._settings.set_boolean('always-show', true);
+        await delay(600);
+        this.R.toggle();
+        await delay(700);
+        const chips = [...this.R.strip.chips.values()].map(chip => chip.actor);
+        assert(global.stage.get_key_focus() === chips[0] && this.R.deck.key === 'claude', 'Shortcut focuses the first chip and opens its deck');
+        const tab = {get_key_symbol: () => Clutter.KEY_Tab, get_state: () => 0};
+        this.R.key(tab);
+        assert(global.stage.get_key_focus() === chips[1], 'Tab moves between chips');
+        for (let i = 0; i < chips.length - 1; i++) this.R.key(tab);
+        assert(this.R.deck.actor.contains(global.stage.get_key_focus()), 'Tab reaches the deck controls');
+        this.R.key({get_key_symbol: () => Clutter.KEY_Escape, get_state: () => 0});
+        assert(!this.R.deck.visible && !global.stage.get_key_focus(), 'Escape closes the deck and drops focus');
+        done('keyboard shortcut, Tab order, Escape');
+    }
+
+    async checkReducedMotion() {
+        const desktop = new Gio.Settings({schema_id: 'org.gnome.desktop.interface'});
+        const animations = desktop.get_boolean('enable-animations');
+        desktop.set_boolean('enable-animations', false);
+        await delay(100);
+        assert(!St.Settings.get().enable_animations, 'GNOME reduced motion setting propagates');
+        this._settings.set_boolean('always-show', false);
+        assert(this.R._length === 0 && !this.R._timeline, 'Reduced motion folds immediately');
+        this._settings.set_boolean('always-show', true);
+        assert(this.R._length === 1 && !this.R._timeline, 'Reduced motion unfolds immediately');
+        await delay(100);
+        this.R.open('claude');
+        await delay(60);
+        assert(this.R.deck.actor.translation_x === 0 && this.R.deck._content.opacity === 255, 'Reduced motion places the deck immediately');
+        this.R.close(true);
+        assert(!this.R.deck.visible, 'Reduced motion closes the deck immediately');
+        desktop.set_boolean('enable-animations', animations);
+        await delay(100);
+        done('reduced motion');
+    }
+
+    async checkOverview() {
+        this.R.open('cursor');
+        Main.overview.show();
+        await delay(100);
+        assert(!this.R.deck.visible && !this.R._deckMounted, 'Overview cancels and unmounts the deck');
+        this.R.open('codex');
+        assert(!this.R.deck.visible, 'Overview blocks reopening');
+        Main.overview.hide();
+        await delay(600);
+        assert(!this.R.deck.visible, 'Leaving Overview does not reopen the deck');
+        // Fold while entering Overview, then return.
+        this._settings.set_boolean('always-show', false);
+        await delay(100);
+        this.R._setExpanded(true);
+        await delay(60);
+        Main.overview.show();
+        await delay(100);
+        assert(!this.R._timeline && this.R._length === 0, 'Overview settles a transient unfold and cancels motion');
+        await delay(550);
+        Main.overview.hide();
+        await delay(650);
+        assert(this.attached('right') <= 1 && this.R.actor.width === TICK.thickness, 'Tick returns to the screen edge after Overview');
+        for (const edge of EDGES) {
+            this._settings.set_string('edge', edge);
+            await delay(100);
+            Main.overview.show();
+            await delay(350);
+            assert(!this.R.deck.visible, `${edge}: no deck in Overview`);
+            Main.overview.hide();
+            await delay(400);
+            assert(this.attached(edge) <= 1, `${edge}: tick stays attached after Overview`);
+        }
+        this._settings.set_string('edge', 'right');
+        this._settings.set_boolean('always-show', true);
+        await delay(700);
+        Main.overview.show();
+        await delay(350);
+        assert(this.R._expanded && this.R._length === 1, 'Overview preserves always-show mode');
+        Main.overview.hide();
+        await delay(400);
+        assert(!this.R.deck.visible, 'Always-show restores without reopening a deck');
+        done('Overview dismissal, fold race, four edges, always-show');
+    }
+
+    async runSmoke() {
+        await delay(2200);
+        Main.overview.hide();
+        await delay(700);
+        assert(usageSource().readings.length === 3, 'Three providers must render');
+        assert(usageSource().readings.every(p => p.windows.length && p.status === 'ok'), 'Demo readings must succeed');
+        assert(usageSource().activities.length === 3, 'Activity demo reader succeeds');
+        done('demo reader');
+        await this.checkModules();
+        await this.checkThemes();
+        await this.checkWorkspaceDismissal();
+        await this.checkWrappedWarnings();
+        // Real pointer input exercises picking rather than assigned hover flags.
+        const pointer = Clutter.get_default_backend().get_default_seat().create_virtual_device(Clutter.InputDeviceType.POINTER_DEVICE);
+        const move = (x, y) => pointer.notify_absolute_motion(GLib.get_monotonic_time(), x, y);
+        await this.checkPointer(move);
+        const placements = await this.checkEdges(move);
+        await this.checkReducedMotion();
+        await this.checkOverview();
+
+        this._settings.set_boolean('cursor', false);
+        await delay(600);
+        assert(usageSource().readings.length === 2 && !usageSource().readings.some(p => p.id === 'cursor'), 'Disabled provider disappears');
+        assert(!this.R.strip.chips.has('cursor') && this.R.strip.chips.size === IDS.length - 1, 'Disabled module loses its chip');
+        assert(this.R.actor.height === railSize(IDS.length - 1, true).length, 'Rail shortens to fit');
+        done('provider disable');
+
+        this._settings.set_string('theme', 'frosted-dark');
+        const prefs = Gio.Subprocess.new(['/usr/bin/gjs', '-m', `${this.path}/prefs-smoke.js`, this.path], Gio.SubprocessFlags.NONE);
+        await delay(1000);
+        await this.capture('prefs', {x: 0, y: 0, width: global.stage.width, height: global.stage.height});
+        this._settings.set_string('theme', 'midnight');
+        await new Promise((resolve, reject) => prefs.wait_check_async(null, (p, result) => {
+            try { p.wait_check_finish(result); resolve(); } catch (error) { reject(error); }
+        }));
+        assert(GLib.file_test(`${output}/prefs.json`, GLib.FileTest.EXISTS), 'Preferences constructed and presented');
+        done('preferences window');
+
+        // Disable while the rail is moving and a deck is open.
+        this._settings.set_boolean('always-show', false);
+        await delay(40);
+        this.R.open('claude');
+        const rail = this.R;
+        super.disable();
+        assert(!rail._timeline && !rail._intent && !rail._grace && !rail._idle && !this._changeIdle && !usageSource() && !this._modules.size && !this._placement,
+            'Disable releases owned resources');
+        done('disable');
+        super.enable();
+        await delay(600);
+        assert(usageSource().readings.length === 2, 'Re-enable works');
+        this._settings.set_boolean('always-show', true);
+        await delay(700);
+        await this.checkWorkspaceDismissal();
+        super.disable();
+        done('re-enable');
+        GLib.file_set_contents(`${output}/result.json`, JSON.stringify({ok: true, placements, checks, crops}));
+    }
+}

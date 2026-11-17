@@ -2,7 +2,7 @@ import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import {Module} from '../lib/module.js';
 import {run} from '../lib/subprocess.js';
-import {PROVIDERS, NAMES, percentage, resetText, normalize, usageSummary, remainingPercent} from '../model.js';
+import {PROVIDERS, NAMES, BADGES, percentage, resetText, normalize, usageSummary, remainingPercent} from '../model.js';
 import {PROVIDER_COLORS} from '../design.js';
 
 const MAX_OUTPUT = 131072;
@@ -117,7 +117,7 @@ class UsageSource {
     _readerFailed() {
         this.readings = this.ids().map(id => ({
             ...(this.readings.find(p => p.id === id) ?? {id, name: NAMES[id], windows: []}),
-            status: 'stale', message: 'Usage reader failed. Check Python 3 is installed, then refresh.',
+            status: 'stale', message: 'usage reader failed · check that Python 3 is installed, then refresh',
         }));
     }
 
@@ -188,49 +188,53 @@ class UsageModule extends Module {
         const remaining = remainingPercent(reading?.windows?.[0]?.usedPercent);
         const stale = reading?.status !== 'ok';
         const sessions = source?.sessions(this.id) ?? [];
+        const updated = Date.parse(reading?.updatedAt);
         return {
-            fraction: remaining === null ? null : remaining / 100,
-            label: percentage(remaining), stale, accent: PROVIDER_COLORS[this.id], glyph: this.id, sessions,
-            animating: sessions.some(s => s.state !== 'idle') || (source?.refreshing.size ?? 0) > 0,
+            ...super.cell(), meter: true, fraction: remaining === null ? null : remaining / 100,
+            label: percentage(remaining), stale, accent: PROVIDER_COLORS[this.id], badge: BADGES[this.id], sessions,
+            light: sessions.some(s => s.state === 'waiting') ? 'waiting' : sessions.some(s => s.state === 'busy') ? 'working' : 'off',
+            updatedAt: Number.isFinite(updated) ? updated : null,
             accessibleName: `${NAMES[this.id]}: ${percentage(remaining)} left${stale ? ', reading unavailable or stale' : ''}`,
         };
     }
 
-    heading() { return `${NAMES[this.id]} Usage`; }
+    context() {
+        const count = source?.sessions(this.id).length ?? 0;
+        return count ? `${count} session${count === 1 ? '' : 's'}` : '';
+    }
 
     card(body, ui) {
         if (this.host.settings.get_boolean('demo'))
-            body.add_child(ui.label('Demo · sample readings', 'ledge-warning'));
+            body.add_child(ui.label('demo · sample readings', 'ledge-caption'));
         const p = this._reading();
         const stale = p?.status !== 'ok';
-        if (!p) body.add_child(ui.label('Reading usage…', 'ledge-muted'));
+        if (!p) body.add_child(ui.label('reading usage…', 'ledge-caption'));
         else {
             if (stale || p.message)
-                body.add_child(ui.label(`${p.status === 'stale' ? 'Stale · ' : ''}${p.message || 'Usage unavailable'}`, 'ledge-warning'));
+                body.add_child(ui.label(`${p.status === 'stale' ? 'stale · ' : ''}${p.message || 'usage unavailable'}`, 'ledge-warning'));
             for (const w of p.windows) {
                 const remaining = remainingPercent(w.usedPercent);
                 body.add_child(ui.bar(w.label, resetText(w.resetsAt), remaining === null ? null : remaining / 100,
                     stale, PROVIDER_COLORS[this.id], usageSummary(w.usedPercent)));
             }
-            const metadata = ui.box('spacing: 4px;');
-            if (p.source) metadata.add_child(ui.label(p.source, 'ledge-muted'));
-            if (p.updatedAt && Number.isFinite(Date.parse(p.updatedAt)))
-                metadata.add_child(ui.label(`Read ${new Date(p.updatedAt).toLocaleString()}`, 'ledge-muted'));
-            if (metadata.get_n_children()) body.add_child(metadata);
-            else metadata.destroy();
+            // The demo line already says where demo readings come from.
+            if (p.source && !this.host.settings.get_boolean('demo')) body.add_child(ui.label(`source · ${p.source}`, 'ledge-caption'));
         }
 
         const sessions = source?.sessions(this.id) ?? [];
         if (sessions.length) {
-            body.add_child(ui.hairline());
+            const section = ui.section('Sessions');
             for (const session of sessions.slice(0, 4)) {
-                const state = session.state === 'waiting' ? 'waiting' : session.state === 'busy' ? 'working' : 'idle';
-                body.add_child(ui.splitRow(session.name, state, state === 'waiting' ? 'ledge-warning' : 'ledge-window-title'));
+                const state = session.state === 'waiting' ? 'waiting on you' : session.state === 'busy' ? 'working' : 'idle';
+                const row = ui.box('spacing: 0;');
+                row.add_child(ui.splitRow(session.name, state, session.state === 'waiting' ? 'ledge-watch' : 'ledge-caption'));
                 if (session.waitingFor || session.detail)
-                    body.add_child(ui.label(session.waitingFor || session.detail, 'ledge-muted'));
+                    row.add_child(ui.label(session.waitingFor || session.detail, 'ledge-caption'));
+                section.add_child(row);
             }
             if (sessions.length > 4)
-                body.add_child(ui.label(`and ${sessions.length - 4} more`, 'ledge-muted'));
+                section.add_child(ui.label(`and ${sessions.length - 4} more`, 'ledge-caption'));
+            body.add_child(section);
         }
         return [['Refresh', () => source?.refresh()]];
     }

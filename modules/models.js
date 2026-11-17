@@ -1,7 +1,7 @@
 import {Module} from '../lib/module.js';
 import {run} from '../lib/subprocess.js';
 import {getJson, postJson} from '../lib/http.js';
-import {formatBytes, tokensPerSecond, ollamaModels, lmStudioModels} from '../model.js';
+import {BADGES, formatBytes, tokensPerSecond, ollamaModels, lmStudioModels} from '../model.js';
 import {MODULE_COLORS} from '../design.js';
 
 const OLLAMA = 'http://127.0.0.1:11434';
@@ -33,7 +33,7 @@ export class ModelsModule extends Module {
     }
 
     // Total GPU memory, read once: it may wake a sleeping dGPU. Missing
-    // nvidia-smi leaves the ring empty.
+    // nvidia-smi leaves the meter unlit.
     async _readGpuMemory() {
         const result = await run(['nvidia-smi', '--query-gpu=memory.total', '--format=csv,noheader,nounits'],
             {timeout: 15, cancellable: this.cancellable});
@@ -59,7 +59,7 @@ export class ModelsModule extends Module {
     async _readOllama() {
         const r = await getJson(`${OLLAMA}/api/ps`, {timeout: 3, cancellable: this.cancellable});
         if (r.ok) return {models: ollamaModels(r.data), message: ''};
-        return {models: [], message: r.status ? `Ollama answered ${r.status}.` : 'Ollama is not running.'};
+        return {models: [], message: r.status ? `Ollama answered ${r.status}` : 'Ollama is not running'};
     }
 
     // Newer LM Studio serves /api/v1, older /api/v0; remember whichever works.
@@ -71,10 +71,10 @@ export class ModelsModule extends Module {
                 this._lmStudioPath = path;
                 return {models: lmStudioModels(r.data), message: ''};
             }
-            if (!r.status) return {models: [], message: 'LM Studio server is off.'};
+            if (!r.status) return {models: [], message: 'LM Studio server is off'};
         }
         this._lmStudioPath = null;
-        return {models: [], message: 'LM Studio server did not list models.'};
+        return {models: [], message: 'LM Studio server did not list models'};
     }
 
     async _measure(name) {
@@ -97,32 +97,34 @@ export class ModelsModule extends Module {
         const models = this._models();
         const vram = (this._ollama?.models ?? []).reduce((sum, m) => sum + (m.vram ?? 0), 0);
         const fraction = this._totalVram ? Math.min(1, vram / this._totalVram) : null;
-        return {...super.cell(), icon: 'computer-chip-symbolic', accent: MODULE_COLORS.models,
+        return {...super.cell(), badge: BADGES.models, accent: MODULE_COLORS.models, meter: true,
+            light: this._measuring.size ? 'working' : 'off',
             fraction, label: this._ollama ? String(models.length) : '—', stale: !this._ollama,
             accessibleName: `Local models: ${models.length} loaded${fraction === null ? '' : `, ${Math.round(fraction * 100)}% of GPU memory`}`};
     }
 
     card(body, ui) {
         if (!this._ollama) {
-            body.add_child(ui.label('Checking Ollama and LM Studio…', 'ledge-muted'));
+            body.add_child(ui.label('checking Ollama and LM Studio…', 'ledge-caption'));
             return [['Refresh', () => this._poll()]];
         }
         const vram = this._ollama.models.reduce((sum, m) => sum + (m.vram ?? 0), 0);
         if (this._totalVram)
             body.add_child(ui.bar('GPU memory', `${formatBytes(vram)} of ${formatBytes(this._totalVram)}`,
-                vram / this._totalVram, false, MODULE_COLORS.models, 'Used by Ollama models'));
+                vram / this._totalVram, false, MODULE_COLORS.models, 'used by Ollama models'));
         for (const [backend, state] of [['Ollama', this._ollama], ['LM Studio', this._lmStudio]]) {
-            body.add_child(ui.label(backend, 'ledge-section'));
-            if (state.message) body.add_child(ui.label(state.message, 'ledge-muted'));
-            else if (!state.models.length) body.add_child(ui.label('No models loaded.', 'ledge-muted'));
+            const section = ui.section(backend);
+            body.add_child(section);
+            if (state.message) section.add_child(ui.label(state.message, 'ledge-caption'));
+            else if (!state.models.length) section.add_child(ui.label('no models loaded', 'ledge-caption'));
             for (const m of state.models) {
-                const parts = [`Size ${formatBytes(m.size)}`];
-                if (backend === 'Ollama') parts.push(`VRAM ${formatBytes(m.vram)}`);
+                const parts = [`size ${formatBytes(m.size)}`];
+                if (backend === 'Ollama') parts.push(`vram ${formatBytes(m.vram)}`);
                 if (this._speeds.has(m.name)) parts.push(this._speeds.get(m.name));
                 const trailing = backend === 'Ollama'
-                    ? [ui.button(this._measuring.has(m.name) ? 'Measuring…' : 'Measure speed', () => this._measure(m.name), 'ledge-small-action')]
+                    ? [ui.button(this._measuring.has(m.name) ? 'measuring…' : 'measure speed', () => this._measure(m.name), 'ledge-small-action')]
                     : [];
-                body.add_child(ui.row(m.name, {detail: parts.join(' · '), trailing}));
+                section.add_child(ui.row(m.name, {detail: parts.join(' · '), trailing, mono: true}));
             }
         }
         return [['Refresh', () => this._poll()]];

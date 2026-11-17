@@ -2,6 +2,7 @@ import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import {Module} from '../lib/module.js';
 import {MODULE_COLORS} from '../design.js';
+import {BADGES} from '../model.js';
 
 // power-profiles-daemon exports the same interface under a new and a legacy
 // name; the bus name doubles as the interface name.
@@ -11,7 +12,7 @@ const BUSES = [
 ];
 
 const PROFILES = {
-    'power-saver': {name: 'Power Saver', short: 'Saver', icon: 'power-profile-power-saver-symbolic'},
+    'power-saver': {name: 'Power saver', short: 'Saver', icon: 'power-profile-power-saver-symbolic'},
     'balanced': {name: 'Balanced', short: 'Bal', icon: 'power-profile-balanced-symbolic'},
     'performance': {name: 'Performance', short: 'Perf', icon: 'power-profile-performance-symbolic'},
 };
@@ -22,7 +23,7 @@ export class PowerModule extends Module {
     static title = 'Power';
 
     start() {
-        this._message = 'Connecting to power-profiles-daemon…';
+        this._message = 'connecting to power-profiles-daemon…';
         this._connect(0);
     }
 
@@ -87,18 +88,18 @@ export class PowerModule extends Module {
 
     cell() {
         const profile = PROFILES[this._active()];
-        return {...super.cell(), icon: profile?.icon ?? 'power-profile-balanced-symbolic', label: profile?.short ?? '—',
+        return {...super.cell(), badge: BADGES.power, label: profile?.short ?? '—',
             accent: MODULE_COLORS.power, stale: !profile,
             accessibleName: `Power profile: ${profile?.name ?? 'unavailable'}`};
     }
 
     card(body, ui) {
-        if (this._message) body.add_child(ui.label(this._message, this._proxy ? 'ledge-warning' : 'ledge-muted'));
+        if (this._message) body.add_child(ui.label(this._message, this._proxy ? 'ledge-warning' : 'ledge-caption'));
         const active = this._active();
         for (const id of this._available())
             body.add_child(ui.row(PROFILES[id].name, {icon: PROFILES[id].icon, active: id === active, onClick: () => this._switch(id)}));
         const degraded = this._property('PerformanceDegraded');
-        if (degraded) body.add_child(ui.label(`Performance limited: ${degraded}`, 'ledge-warning'));
+        if (degraded) body.add_child(ui.label(`performance limited: ${degraded}`, 'ledge-warning'));
         return [];
     }
 

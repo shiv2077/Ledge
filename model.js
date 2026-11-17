@@ -1,6 +1,22 @@
 // Pure geometry and presentation helpers, also exercised by Node tests.
 export const PROVIDERS = ['claude', 'cursor', 'codex'];
 export const NAMES = {claude: 'Claude Code', cursor: 'Cursor', codex: 'Codex'};
+// Two-letter monograms drawn on chip badges.
+export const BADGES = {claude: 'CL', cursor: 'CU', codex: 'CX', power: 'PW', todo: 'TD', models: 'LM', github: 'GH', training: 'TR'};
+
+const pad = value => String(value).padStart(2, '0');
+
+// Deck header timestamp: `live 09:39` for a current reading, `stale 14m` for
+// an old one, nothing when the module has never read.
+export function stampText(info, now = Date.now()) {
+    if (!Number.isFinite(info?.updatedAt)) return '';
+    if (!info.stale) {
+        const date = new Date(info.updatedAt);
+        return `live ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    }
+    const minutes = Math.max(0, Math.round((now - info.updatedAt) / 60000));
+    return minutes < 60 ? `stale ${minutes}m` : minutes < 1440 ? `stale ${Math.floor(minutes / 60)}h` : `stale ${Math.floor(minutes / 1440)}d`;
+}
 
 export function remainingPercent(usedPercent) {
     return typeof usedPercent === 'number' && Number.isFinite(usedPercent) && usedPercent >= 0
@@ -30,15 +46,15 @@ export function percentage(value) {
 
 export function resetText(value, now = Date.now()) {
     if (!value || !Number.isFinite(Date.parse(value)))
-        return 'Reset time unavailable';
+        return 'reset time unavailable';
     const minutes = Math.ceil((Date.parse(value) - now) / 60000);
     if (minutes <= 0)
-        return 'Reset due · refresh for latest';
+        return 'reset due · refresh for latest';
     if (minutes < 60)
-        return `Resets in ${minutes}m`;
+        return `resets in ${minutes}m`;
     if (minutes < 1440)
-        return `Resets in ${Math.floor(minutes / 60)}h ${minutes % 60}m`;
-    return `Resets in ${Math.floor(minutes / 1440)}d ${Math.floor(minutes % 1440 / 60)}h`;
+        return `resets in ${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+    return `resets in ${Math.floor(minutes / 1440)}d ${Math.floor(minutes % 1440 / 60)}h`;
 }
 
 export function normalize(data, enabled) {

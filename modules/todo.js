@@ -1,7 +1,7 @@
 import GLib from 'gi://GLib';
 import {Module} from '../lib/module.js';
 import {readText, writeText, ensureDir, dataDir} from '../lib/files.js';
-import {parseTodos, sortTodos} from '../model.js';
+import {BADGES, parseTodos, sortTodos} from '../model.js';
 import {MODULE_COLORS} from '../design.js';
 
 export class TodoModule extends Module {
@@ -19,7 +19,7 @@ export class TodoModule extends Module {
         const {text, missing, error} = await readText(this._path, this.cancellable);
         if (this.cancellable.is_cancelled()) return;
         this._todos = [];
-        if (!missing && error) this._message = `Could not read todos: ${error.message}`.slice(0, 200);
+        if (!missing && error) this._message = `could not read todos: ${error.message}`.slice(0, 200);
         else if (!missing) {
             try {
                 this._todos = parseTodos(text);
@@ -27,7 +27,7 @@ export class TodoModule extends Module {
                 // Keep the unreadable file for the user and start empty.
                 const backup = `${this._path}.bad-${Math.floor(Date.now() / 1000)}`;
                 const failed = await writeText(backup, text, this.cancellable);
-                this._message = failed ? 'The todo file was unreadable and could not be backed up.'
+                this._message = failed ? 'the todo file was unreadable and could not be backed up'
                     : `The todo file was unreadable. It was saved as ${GLib.path_get_basename(backup)}.`;
             }
         }
@@ -43,7 +43,7 @@ export class TodoModule extends Module {
             // Not cancellable: a todo added just before disable must still be saved.
             const error = await ensureDir(dataDir()) ?? await writeText(this._path, JSON.stringify(this._todos, null, 1));
             if (this.cancellable.is_cancelled()) return;
-            const message = error ? `Could not save todos: ${error.message}`.slice(0, 200) : '';
+            const message = error ? `could not save todos: ${error.message}`.slice(0, 200) : '';
             if (message !== this._message) { this._message = message; this.changed(); }
         } while (this._dirty);
         this._saving = false;
@@ -67,7 +67,7 @@ export class TodoModule extends Module {
 
     cell() {
         const open = this._open();
-        return {...super.cell(), icon: 'checkbox-checked-symbolic', accent: MODULE_COLORS.todo,
+        return {...super.cell(), badge: BADGES.todo, accent: MODULE_COLORS.todo,
             label: this._todos ? String(open) : '—', stale: !this._todos,
             accessibleName: `Todo: ${this._todos ? `${open} open` : 'loading'}`};
     }
@@ -75,13 +75,13 @@ export class TodoModule extends Module {
     card(body, ui) {
         if (this._message) body.add_child(ui.label(this._message, 'ledge-warning'));
         if (!this._todos) {
-            body.add_child(ui.label('Loading…', 'ledge-muted'));
+            body.add_child(ui.label('loading…', 'ledge-caption'));
             return [];
         }
-        const entry = ui.entry('Add a todo and press Enter', text => this._add(text));
+        const entry = ui.entry('new todo', text => this._add(text));
         body.add_child(entry);
         ui.autofocus(entry);
-        if (!this._todos.length) body.add_child(ui.label('Nothing to do.', 'ledge-muted'));
+        if (!this._todos.length) body.add_child(ui.label('nothing to do', 'ledge-caption'));
         for (const todo of sortTodos(this._todos)) {
             const tick = ui.iconButton(todo.done ? 'checkbox-checked-symbolic' : 'checkbox-symbolic',
                 todo.done ? `Mark "${todo.text}" open` : `Mark "${todo.text}" done`,

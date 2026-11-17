@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Report training progress to the Ledge notch.
+"""Report training progress to Ledge.
 
 Copy this file next to a training script or put it on PYTHONPATH. It has no
 dependencies beyond the standard library.
