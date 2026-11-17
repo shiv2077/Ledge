@@ -29,6 +29,10 @@
     <key name="github-poll-seconds" type="i"><default>300</default><range min="60" max="3600"/><summary>Seconds between GitHub checks</summary></key>
     <key name="training" type="b"><default>true</default><summary>Show the training run widget</summary></key>
     <key name="training-stall-minutes" type="i"><default>10</default><range min="1" max="240"/><summary>Minutes without an update before a running job counts as stalled</summary></key>
+    <key name="copilot" type="b"><default>false</default><summary>Show the GitHub Copilot quota, read through gh</summary></key>
+    <key name="llamacpp" type="b"><default>true</default><summary>Read a local llama.cpp server</summary></key>
+    <key name="llamacpp-port" type="i"><default>8080</default><range min="1" max="65535"/><summary>Port of the local llama.cpp server</summary></key>
+    <key name="lmstudio-logs" type="b"><default>true</default><summary>Count requests in LM Studio server logs</summary></key>
     <key name="hidden-accounts" type="as"><default>[]</default><summary>Extra accounts hidden from the strip, by key such as claude:work</summary></key>
     <key name="usage-order" type="s"><default>'fixed'</default><choices><choice value="fixed"/><choice value="remaining"/><choice value="deficit"/></choices><summary>Order of usage chips: fixed, least remaining first, or furthest ahead of pace first</summary></key>
     <key name="headline-window" type="s"><default>'session'</default><choices><choice value="session"/><choice value="weekly"/><choice value="tightest"/></choices><summary>Which window a usage chip shows</summary></key>

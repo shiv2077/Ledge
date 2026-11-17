@@ -5,7 +5,7 @@
 // when contrast would be too low.
 export const PROVIDER_COLORS = {claude: '#E9956C', cursor: '#B59AFF', codex: '#63D9AE'};
 
-export const MODULE_COLORS = {power: '#FFC857', todo: '#7AB8FF', models: '#9BE564', github: '#C9D1D9', training: '#FF8FB1'};
+export const MODULE_COLORS = {power: '#FFC857', todo: '#7AB8FF', models: '#9BE564', github: '#C9D1D9', copilot: '#5FD3F3', training: '#FF8FB1'};
 
 // 4 px grid: the only spacing values in use.
 export const SPACE = {xs: 4, sm: 8, md: 12, lg: 16, xl: 24};

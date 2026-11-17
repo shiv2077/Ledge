@@ -30,7 +30,7 @@ test('bytes and token speed', () => {
 
 test('ollama and lm studio model lists', () => {
     assert.deepEqual(ollamaModels({models: [{name: 'llama3:8b', size: 5e9, size_vram: 4e9}, {size: 1}]}),
-        [{backend: 'Ollama', name: 'llama3:8b', size: 5e9, vram: 4e9}]);
+        [{backend: 'Ollama', name: 'llama3:8b', size: 5e9, vram: 4e9, context: null, quant: null, expiresAt: null}]);
     assert.deepEqual(ollamaModels(null), []);
     const v1 = {models: [{key: 'qwen', display_name: 'Qwen 7B', size_bytes: 4e9, loaded_instances: [{id: 'qwen'}]},
         {key: 'idle', loaded_instances: []}]};

@@ -2,7 +2,7 @@
 export const PROVIDERS = ['claude', 'cursor', 'codex'];
 export const NAMES = {claude: 'Claude Code', cursor: 'Cursor', codex: 'Codex'};
 // Two-letter monograms drawn on chip badges.
-export const BADGES = {claude: 'CL', cursor: 'CU', codex: 'CX', power: 'PW', todo: 'TD', models: 'LM', github: 'GH', training: 'TR'};
+export const BADGES = {claude: 'CL', cursor: 'CU', codex: 'CX', power: 'PW', todo: 'TD', models: 'LM', github: 'GH', copilot: 'CP', training: 'TR'};
 
 const pad = value => String(value).padStart(2, '0');
 
@@ -193,7 +193,67 @@ export function ollamaModels(data) {
         backend: 'Ollama', name: m.name.slice(0, 120),
         size: Number.isFinite(m.size) ? m.size : null,
         vram: Number.isFinite(m.size_vram) ? m.size_vram : null,
+        context: Number.isInteger(m.context_length) && m.context_length > 0 ? m.context_length : null,
+        quant: typeof m.details?.quantization_level === 'string' ? m.details.quantization_level.slice(0, 16) : null,
+        expiresAt: Number.isFinite(Date.parse(m.expires_at)) ? m.expires_at : null,
     }));
+}
+
+// llama.cpp server /slots: newer builds say `is_processing`, older `state` 1.
+export function llamaSlots(data) {
+    if (!Array.isArray(data)) return null;
+    const slots = data.filter(slot => slot && typeof slot === 'object');
+    return {
+        total: slots.length,
+        busy: slots.filter(slot => slot.is_processing === true || slot.state === 1).length,
+        context: Number.isInteger(slots[0]?.n_ctx) ? slots[0].n_ctx : null,
+    };
+}
+
+// llama.cpp server /metrics (Prometheus text, `--metrics`). Only the
+// `llamacpp:` gauges and counters below are read.
+const LLAMA_METRICS = {
+    'llamacpp:prompt_tokens_seconds': 'promptSpeed',
+    'llamacpp:predicted_tokens_seconds': 'generateSpeed',
+    'llamacpp:requests_processing': 'processing',
+    'llamacpp:requests_deferred': 'deferred',
+    'llamacpp:tokens_predicted_total': 'predictedTotal',
+};
+
+export function llamaMetrics(text) {
+    const result = {};
+    for (const line of String(text ?? '').split('\n')) {
+        if (!line.startsWith('llamacpp:')) continue;
+        const [name, raw] = line.trim().split(/\s+/);
+        const key = LLAMA_METRICS[name.replace(/\{.*$/, '')];
+        const value = Number(raw);
+        if (key && Number.isFinite(value)) result[key] = value;
+    }
+    return result;
+}
+
+export const tokenRate = value => typeof value === 'number' && Number.isFinite(value) && value > 0 ? `${value.toFixed(1)} tok/s` : '—';
+
+// GitHub Copilot quota from `gh api /copilot_internal/user`. Only quota
+// fields are read. Null when the account has no snapshots (no plan).
+const COPILOT_QUOTAS = [['premium_interactions', 'Premium requests'], ['chat', 'Chat'], ['completions', 'Completions']];
+
+export function copilotQuota(data) {
+    const snapshots = data?.quota_snapshots;
+    if (!snapshots || typeof snapshots !== 'object') return null;
+    const reset = [data.quota_reset_date_utc, data.quota_reset_date].find(value => Number.isFinite(Date.parse(value))) ?? null;
+    const windows = [];
+    for (const [id, label] of COPILOT_QUOTAS) {
+        const q = snapshots[id];
+        if (!q || typeof q !== 'object') continue;
+        if (q.unlimited === true) { windows.push({id, label, unlimited: true, usedPercent: 0, resetsAt: reset}); continue; }
+        const left = typeof q.percent_remaining === 'number' && Number.isFinite(q.percent_remaining) ? q.percent_remaining : null;
+        if (left === null) continue;
+        windows.push({id, label, unlimited: false, usedPercent: Math.min(100, Math.max(0, 100 - left)), resetsAt: reset,
+            remaining: Number.isFinite(q.remaining) ? q.remaining : null, entitlement: Number.isFinite(q.entitlement) ? q.entitlement : null,
+            overage: Number.isFinite(q.overage_count) ? q.overage_count : 0});
+    }
+    return {plan: typeof data.copilot_plan === 'string' ? data.copilot_plan.slice(0, 40) : '', resetsAt: reset, windows};
 }
 
 // LM Studio: /api/v1/models lists models with loaded_instances (0.4+);

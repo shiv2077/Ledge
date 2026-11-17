@@ -1,0 +1,4 @@
+2030-01-02 10:00:00 [INFO] Received POST request to /v1/chat/completions with body: {"messages":[{"content":"secret words"}]}
+2030-01-02 10:00:05 [INFO] Received POST request to /v1/embeddings with body: {}
+[2030-01-02 10:01:00][INFO] Received GET request to /v1/models
+some other line about /v1/chat/completions

@@ -105,8 +105,12 @@ export default class LedgePreferences extends ExtensionPreferences {
         const models = group('Local models');
         addSwitch(models, 'models', 'Loaded models', 'Ollama on port 11434 and the LM Studio server on port 1234, localhost only.');
         addSpin(models, 'models-poll-seconds', 'Check interval', 'Seconds.', 5, 300, 5, 'models');
+        addSwitch(models, 'llamacpp', 'llama.cpp server', 'Health, slots and speeds; start llama-server with --slots and --metrics.');
+        addSpin(models, 'llamacpp-port', 'llama.cpp port', 'On localhost.', 1, 65535, 1, 'llamacpp');
+        addSwitch(models, 'lmstudio-logs', 'LM Studio request counts', 'Counts requests in ~/.lmstudio/server-logs; request text is never read into Ledge.');
 
         const github = group('GitHub', 'Uses the gh command line tool and its sign-in. Ledge stores no token.');
+        addSwitch(github, 'copilot', 'Copilot quota', 'Premium requests left this month, read with gh api.');
         addSwitch(github, 'github', 'Pull requests and CI', 'Review requests, your open pull requests, and the latest CI run per watched repository.');
         const repos = new Adw.EntryRow({title: 'Watched repositories (owner/name, comma separated)',
             text: settings.get_strv('github-repos').join(', '), show_apply_button: true});

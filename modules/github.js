@@ -14,6 +14,11 @@ const MAX_PRS = 20;
 const SIGTERM = 15;
 
 // All GitHub access goes through the gh CLI, which owns authentication.
+// Demo readings: `gh` is not run while `demo` is on.
+const DEMO = {error: '', reviews: [{title: 'Tighten chip spacing in the top bar', url: 'https://github.com/example/ledge/pull/42', number: 42, repo: 'example/ledge'}],
+    mine: [{title: 'Add llama.cpp slots to the models deck', url: 'https://github.com/example/ledge/pull/41', number: 41, repo: 'example/ledge'}],
+    runs: [{repo: 'example/ledge', error: '', state: 'passed', title: 'CI', branch: 'main', url: 'https://github.com/example/ledge/actions'}]};
+
 export class GithubModule extends Module {
     static id = 'github';
     static title = 'GitHub';
@@ -24,7 +29,7 @@ export class GithubModule extends Module {
         this._schedule();
         this._settingsSignal = this.settings.connect('changed', (_s, key) => {
             if (key === 'github-poll-seconds') this._schedule();
-            if (key === 'github-repos') this._poll();
+            if (key === 'github-repos' || key === 'demo') this._poll();
         });
     }
 
@@ -50,6 +55,12 @@ export class GithubModule extends Module {
     async _poll() {
         if (this._polling) return;
         this._polling = true;
+        if (this.settings.get_boolean('demo')) {
+            this._polling = false;
+            this._state = DEMO;
+            this.changed();
+            return;
+        }
         const repos = parseRepos(this.settings.get_strv('github-repos').join(' ')).slice(0, MAX_REPOS);
         const reviews = await this._gh(['search', 'prs', '--review-requested=@me', '--state=open', '--json', PR_FIELDS, '--limit', String(MAX_PRS)]);
         let state;

@@ -14,10 +14,11 @@ import {PowerModule} from './modules/power.js';
 import {TodoModule} from './modules/todo.js';
 import {ModelsModule} from './modules/models.js';
 import {GithubModule} from './modules/github.js';
+import {CopilotModule} from './modules/copilot.js';
 import {TrainingModule} from './modules/training.js';
 
 // Chip order.
-const MODULES = [...USAGE_MODULES, PowerModule, TodoModule, ModelsModule, GithubModule, TrainingModule];
+const MODULES = [...USAGE_MODULES, PowerModule, TodoModule, ModelsModule, GithubModule, CopilotModule, TrainingModule];
 
 // Keys that move Ledge to another placement; the old one is torn down.
 const PLACEMENT_KEYS = ['placement', 'panel-box', 'panel-position'];

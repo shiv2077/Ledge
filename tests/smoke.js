@@ -16,7 +16,7 @@ const output = GLib.getenv('LEDGE_SMOKE_OUTPUT');
 const delay = ms => new Promise(resolve => GLib.timeout_add(GLib.PRIORITY_DEFAULT, ms, () => { resolve(); return GLib.SOURCE_REMOVE; }));
 const assert = (value, message) => { if (!value) throw new Error(message); };
 const EDGES = ['right', 'top', 'left', 'bottom'];
-const IDS = ['claude', 'cursor', 'codex', 'power', 'todo', 'models', 'github', 'training'];
+const IDS = ['claude', 'cursor', 'codex', 'power', 'todo', 'models', 'github', 'copilot', 'training'];
 const PAD = 48;
 const checks = [];
 const crops = {};
@@ -30,6 +30,7 @@ export default class Smoke extends Ledge {
         this.getSettings().set_string('placement', 'edge');
         // The demo's second Claude account stays hidden until checkAccounts.
         this.getSettings().set_strv('hidden-accounts', ['claude:work']);
+        this.getSettings().set_boolean('copilot', true);
         super.enable();
         this.runSmoke().catch(error => GLib.file_set_contents(`${output}/result.json`,
             JSON.stringify({ok: false, error: String(error), stack: error.stack, passed: checks, crops})));
@@ -315,8 +316,11 @@ export default class Smoke extends Ledge {
             assert(rail.x >= a.x && rail.y >= a.y && rail.x + rail.width <= a.x + a.width + 1 && rail.y + rail.height <= a.y + a.height + 1, `${edge}: rail fits the work area`);
             await this.capture(`rail-${edge}`);
             this._settings.set_boolean('always-show', true);
+            // Decks open by call here; a pointer resting on a chip would reopen its own.
+            move(a.x + 2, a.y + 2);
             await delay(200);
             for (const id of IDS) {
+                this.R._pinned = true;
                 this.R.open(id);
                 await delay(260);
                 const deck = this.R.deck.actor;
@@ -326,8 +330,9 @@ export default class Smoke extends Ledge {
                 assert(ds >= rs + CHAMFER.large && (dl > rl - 2 * CHAMFER.large || ds + dl <= rs + rl - CHAMFER.large),
                     `${edge} ${id}: deck stays on the rail's straight side (${ds}+${dl} on ${rs}+${rl})`);
                 assert(deck.x >= a.x && deck.y >= a.y && deck.x + deck.width <= a.x + a.width && deck.y + deck.height <= a.y + a.height, `${edge} ${id}: deck stays inside the work area`);
-                assert(deck.translation_x === 0 && deck.translation_y === 0, `${edge} ${id}: deck motion settles`);
-                assert(this.R.deck.side === edge && this.R.strip.chips.get(id).open, `${edge} ${id}: deck docks on the rail side and marks its chip`);
+                for (let wait = 0; wait < 6 && (deck.translation_x || deck.translation_y); wait++) await delay(100);
+                assert(deck.translation_x === 0 && deck.translation_y === 0, `${edge} ${id}: deck motion settles (${deck.translation_x}, ${deck.translation_y})`);
+                assert(this.R.deck.side === edge && this.R.strip.chips.get(id).open, `${edge} ${id}: deck docks on the rail side and marks its chip (visible ${this.R.deck.visible} key ${this.R.deck.key} side ${this.R.deck.side} open ${this.R.strip.chips.get(id)?.open} chips ${this.R.strip.keys().length})`);
                 for (const child of this.R.deck._content.get_children())
                     assert(child.x >= DECK.padding - 1 && child.x + child.width <= deck.width - DECK.padding + 1, `${edge} ${id}: content respects the padding`);
                 assert(this.R.focusTargets().includes(this.R.deck._content.get_last_child().get_first_child()), `${edge} ${id}: footer actions are keyboard reachable`);
@@ -600,7 +605,7 @@ export default class Smoke extends Ledge {
         click();
         await delay(300);
         const switcher = P.deck._content.get_first_child();
-        assert(P.deck.key === 'github' && P.strip._summary.open, `Summary chip opens on the module its light stands for, got ${P.deck.key}`);
+        assert(P.deck.key === 'cursor' && P.strip._summary.open, `Summary chip opens on the module its light stands for, got ${P.deck.key}`);
         assert(Math.abs(deck.get_transformed_position()[0] - P.strip.summaryActor.get_transformed_position()[0]) <= 1, 'Summary deck aligns with the summary chip');
         assert(P.deck.visible && switcher.get_n_children() === IDS.length && switcher.get_children().every(b => b.has_style_class_name('ledge-switch')), 'Summary deck has a module switcher row');
         switcher.get_child_at_index(5).emit('clicked', 1);
@@ -653,6 +658,9 @@ export default class Smoke extends Ledge {
     async checkAlerts() {
         const src = usageSource();
         const R = this.R;
+        // Scripted documents only: the demo reader's own polls could raise alerts too.
+        GLib.Source.remove(src._activityPoll);
+        src._cancelActivity();
         R.close();
         const alwaysShow = this._settings.get_boolean('always-show');
         this._settings.set_boolean('always-show', false);
@@ -667,7 +675,7 @@ export default class Smoke extends Ledge {
         assert(!played.length && !R._expanded, 'A new busy session raises no alert');
         feed('idle');
         assert(played.join() === 'complete' && R._expanded, 'A finished session plays its sound and peeks the rail');
-        await delay(1500);
+        await delay(2600);
         assert(R._expanded === R._inside(), `The peek folds again after its seconds: expanded ${R._expanded} inside ${R._inside()} keyboard ${R._keyboardOpen} deck ${R.deck.visible} peek ${R._peek}`);
         feed('waiting');
         assert(played.join() === 'complete,message-new-instant', 'A waiting session plays the waiting sound');
@@ -703,6 +711,10 @@ export default class Smoke extends Ledge {
         window.usedPercent = used;
         window.resetsAt = resetsAt;
         this._settings.set_boolean('always-show', alwaysShow);
+        src._activityPoll = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 3, () => {
+            src.refreshActivity();
+            return GLib.SOURCE_CONTINUE;
+        });
         await delay(400);
         done('alerts');
     }
@@ -768,6 +780,29 @@ export default class Smoke extends Ledge {
         done('accounts');
     }
 
+    // Local models and Copilot from their demo readings: no server or gh call.
+    async checkSources() {
+        const R = this.R;
+        const texts = actor => actor instanceof St.Label ? [actor.text]
+            : [...actor instanceof St.Button && actor.label ? [actor.label] : [], ...actor.get_children().flatMap(texts)];
+        R.open('models', true);
+        await delay(400);
+        let shown = texts(R.deck.actor);
+        for (const want of ['llama.cpp', 'slots busy', '1 of 2', '41.7 tok/s', 'requests today · 7 days', '42 · 230'])
+            assert(shown.includes(want), `Models deck shows ${want}`);
+        assert(R.strip.chips.get('models').info.light === 'working', 'A busy llama.cpp slot lights the models chip');
+        R.open('copilot', true);
+        await delay(400);
+        shown = texts(R.deck.actor);
+        assert(shown.includes('Premium requests') && shown.some(t => t.startsWith('192 of 300 left')) && shown.includes('unlimited'), 'Copilot deck shows its quotas');
+        assert(R.strip.chips.get('copilot').info.label === '64%', 'Copilot chip shows premium requests left');
+        R.open('github', true);
+        await delay(400);
+        assert(texts(R.deck.actor).some(t => t.includes('Tighten chip spacing')), 'GitHub demo lists pull requests');
+        R.close();
+        done('sources');
+    }
+
     async runSmoke() {
         await delay(2200);
         Main.overview.hide();
@@ -777,6 +812,7 @@ export default class Smoke extends Ledge {
         assert(usageSource().activities.length === 3, 'Activity demo reader succeeds');
         done('demo reader');
         await this.checkModules();
+        await this.checkSources();
         await this.checkThemes();
         await this.checkWorkspaceDismissal();
         await this.checkWrappedWarnings();
