@@ -10,6 +10,7 @@ import Shell from 'gi://Shell';
 import Clutter from 'gi://Clutter';
 import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
 
 const output = GLib.getenv('LEDGE_SMOKE_OUTPUT');
 const delay = ms => new Promise(resolve => GLib.timeout_add(GLib.PRIORITY_DEFAULT, ms, () => { resolve(); return GLib.SOURCE_REMOVE; }));
@@ -645,6 +646,65 @@ export default class Smoke extends Ledge {
         return deck.actor.height - footer.y - footer.height;
     }
 
+    // Session alerts: sound and a short peek of the folded rail; limit
+    // notifications at 80 and 100 %; Do Not Disturb silences both.
+    async checkAlerts() {
+        const src = usageSource();
+        const R = this.R;
+        R.close();
+        const alwaysShow = this._settings.get_boolean('always-show');
+        this._settings.set_boolean('always-show', false);
+        R._setExpanded(false);
+        await delay(400);
+        const played = [];
+        const play = this._play;
+        this._play = name => { played.push(name); play.call(this, name); };
+        this._settings.set_int('peek-seconds', 1);
+        const feed = state => src.ingestActivity({version: 1, providers: [{id: 'claude', sessions: [{id: 'smoke-1', name: 'Smoke', state}]}]});
+        feed('busy');
+        assert(!played.length && !R._expanded, 'A new busy session raises no alert');
+        feed('idle');
+        assert(played.join() === 'complete' && R._expanded, 'A finished session plays its sound and peeks the rail');
+        await delay(1500);
+        assert(R._expanded === R._inside(), `The peek folds again after its seconds: expanded ${R._expanded} inside ${R._inside()} keyboard ${R._keyboardOpen} deck ${R.deck.visible} peek ${R._peek}`);
+        feed('waiting');
+        assert(played.join() === 'complete,message-new-instant', 'A waiting session plays the waiting sound');
+        const banners = new Gio.Settings({schema_id: 'org.gnome.desktop.notifications'});
+        banners.set_boolean('show-banners', false);
+        feed('busy');
+        feed('idle');
+        assert(played.length === 2, 'Do Not Disturb silences session alerts');
+        banners.set_boolean('show-banners', true);
+        this._settings.set_string('sound-preview', 'bell');
+        assert(played[2] === 'bell' && this._settings.get_string('sound-preview') === '', 'A sound preview plays once and resets');
+        this._play = play;
+
+        const tray = MessageTray.getSystemSource();
+        const count = () => tray.notifications.filter(n => /^Claude Code (at|limit)/.test(n.title)).length;
+        const window = src.readings.find(r => r.id === 'claude').windows[0];
+        const used = window.usedPercent;
+        const resetsAt = window.resetsAt;
+        const before = count();
+        for (const percent of [85, 90, 100, 100]) {
+            window.usedPercent = percent;
+            src._checkLimits();
+        }
+        assert(count() - before === 2, `Limit alerts fire once at 80 and once at 100, got ${count() - before}`);
+        window.usedPercent = used;
+        window.resetsAt = new Date(Date.now() + 7 * 86400e3).toISOString();
+        src._checkLimits();
+        this._settings.set_strv('alerts-muted', ['claude']);
+        window.usedPercent = 95;
+        src._checkLimits();
+        assert(count() - before === 2, 'A muted provider raises no limit alert');
+        this._settings.set_strv('alerts-muted', []);
+        window.usedPercent = used;
+        window.resetsAt = resetsAt;
+        this._settings.set_boolean('always-show', alwaysShow);
+        await delay(400);
+        done('alerts');
+    }
+
     async runSmoke() {
         await delay(2200);
         Main.overview.hide();
@@ -664,6 +724,7 @@ export default class Smoke extends Ledge {
         const placements = await this.checkEdges(move);
         await this.checkReducedMotion();
         await this.checkOverview();
+        await this.checkAlerts();
         const keyboard = Clutter.get_default_backend().get_default_seat().create_virtual_device(Clutter.InputDeviceType.KEYBOARD_DEVICE);
         await this.checkPanel(pointer, keyboard);
 

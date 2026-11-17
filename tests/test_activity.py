@@ -98,6 +98,7 @@ class ActivityTests(unittest.TestCase):
                 "status": "busy",
                 "startedAt": 1_000_000,
                 "statusUpdatedAt": 1_005_000,
+                "sessionId": "abc-123",
             }
             (sessions / "42.json").write_text(json.dumps(record))
             (sessions / "dead.json").write_text(json.dumps({
@@ -118,6 +119,9 @@ class ActivityTests(unittest.TestCase):
         self.assertEqual(found[0]["state"], "busy")
         self.assertEqual(found[0]["detail"], "VS Code · usage-meter")
         self.assertNotIn("\n", found[0]["name"])
+        # The pid reaches the extension so it can raise the session's window.
+        self.assertEqual(found[0]["pid"], 42)
+        self.assertEqual(found[0]["id"], "abc-123")
 
     def test_claude_caps_file_size_and_excludes_unknown_state(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -291,6 +295,37 @@ class ActivityTests(unittest.TestCase):
         self.assertEqual(found[0]["name"], "Desktop research")
         self.assertEqual(found[0]["detail"], "Recent activity (estimated)")
         self.assertTrue(found[0]["derived"])
+
+    def test_codex_reports_thread_id_and_folder_without_message_columns(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            rollout = root / "rollout-x.jsonl"
+            rollout.write_text('{"type":"session_meta"}\n')
+            os.utime(rollout, (1998, 1998))
+            state = root / "state_5.sqlite"
+            db = sqlite3.connect(state)
+            try:
+                db.execute("CREATE TABLE threads (id TEXT, rollout_path TEXT, cwd TEXT, archived INT, "
+                           "updated_at_ms INT, first_user_message TEXT, preview TEXT)")
+                db.execute("INSERT INTO threads VALUES (?, ?, ?, 0, 1, ?, ?)",
+                           ("thread-1", str(rollout), "/work/meter", "secret prompt", "secret preview"))
+                db.commit()
+            finally:
+                db.close()
+            found = activity.read_codex_sessions(state_store=state, desktop_store=root / "none.db", now=2000)
+        self.assertEqual(found[0]["id"], "thread-1")
+        self.assertEqual(found[0]["cwd"], "/work/meter")
+        self.assertNotIn("secret", json.dumps(found))
+
+    def test_cursor_sessions_carry_the_editor_pid(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            proc = root / "proc"
+            self._make_proc(proc, 70, 1000, command="/opt/cursor/cursor")
+            self._make_proc(proc, 71, 1100, command="/opt/cursor/cursor")
+            found, start, pid = activity._cursor_process_info(proc_root=proc, current_uid=os.getuid())
+        self.assertTrue(found)
+        self.assertEqual(pid, 70, "the oldest editor process owns the windows")
 
     def test_codex_old_activity_is_empty_and_malformed_db_is_safe(self):
         with tempfile.TemporaryDirectory() as temp:

@@ -449,6 +449,8 @@ def _claude_session(
             waiting_for = _clean_text(record.get("needs"), "") or None
 
     return {
+        "id": _clean_text(record.get("sessionId"), "", 128),
+        "pid": int(pid_number),
         "name": name,
         "detail": detail,
         "state": state,
@@ -563,6 +565,7 @@ def _cursor_session(
     cursor_launched_at: Optional[float],
     stale_after: float,
     now: float,
+    editor_pid: Optional[int] = None,
 ) -> Optional[dict[str, Any]]:
     composer_id = head.get("composerId")
     if not isinstance(composer_id, str) or not composer_id:
@@ -619,6 +622,9 @@ def _cursor_session(
         waiting_for = None
 
     return {
+        "id": _clean_text(composer_id, "", 128),
+        # Sessions live in the editor; its oldest process owns the windows.
+        "pid": editor_pid,
         "name": _clean_text(head.get("name"), "Untitled chat") or "Untitled chat",
         "detail": _clean_text(head.get("subtitle"), "Cursor") or "Cursor",
         "state": state,
@@ -664,13 +670,13 @@ def _cursor_process_info(
     *,
     proc_root: Path | str = "/proc",
     current_uid: Optional[int] = None,
-) -> tuple[bool, Optional[float]]:
-    """Return (editor found, earliest known editor start epoch)."""
+) -> tuple[bool, Optional[float], Optional[int]]:
+    """Return (editor found, earliest editor start epoch, that process's pid)."""
 
     root = Path(proc_root)
     uid = os.getuid() if current_uid is None else int(current_uid)
     found = False
-    starts: list[float] = []
+    starts: list[tuple[float, int]] = []
     try:
         entries = os.scandir(root)
     except (OSError, ValueError):
@@ -696,13 +702,16 @@ def _cursor_process_info(
             found = True
             start = _proc_start_epoch(pid_dir, root)
             if start is not None and math.isfinite(start):
-                starts.append(start)
+                starts.append((start, pid))
     finally:
         try:
             entries.close()
         except OSError:
             pass
-    return found, min(starts) if starts else None
+    if not starts:
+        return found, None, None
+    start, pid = min(starts)
+    return found, start, pid
 
 
 def cursor_launch_date(found: bool, launch_date: Any = None) -> Optional[float]:
@@ -723,7 +732,7 @@ def find_cursor_launch_date(
 ) -> Optional[float]:
     """Find the current same-UID Cursor process start time, if any."""
 
-    found, start = _cursor_process_info(proc_root=proc_root, current_uid=current_uid)
+    found, start, _pid = _cursor_process_info(proc_root=proc_root, current_uid=current_uid)
     return cursor_launch_date(found, start)
 
 
@@ -748,13 +757,14 @@ def read_cursor_sessions(
         return []
 
     if cursor_launched_at is _UNSET:
-        running, launch = _cursor_process_info(
+        running, launch, editor_pid = _cursor_process_info(
             proc_root=proc_root,
             current_uid=current_uid,
         )
         launched = launch
     else:
         parsed = _epoch(cursor_launched_at)
+        editor_pid = None
         running = cursor_launched_at is not None
         launched = parsed
         if parsed is not None and parsed < -1e15:
@@ -805,6 +815,7 @@ def read_cursor_sessions(
                 cursor_launched_at=launched,
                 stale_after=stale_after,
                 now=current,
+                editor_pid=editor_pid,
             )
         except (TypeError, ValueError, OverflowError):
             session = None
@@ -821,16 +832,27 @@ def _codex_home(env: Mapping[str, str]) -> Path:
     return _home(env) / ".codex"
 
 
-def _newest_rollout_path(store: Path, env: Mapping[str, str]) -> Optional[Path]:
+def _newest_rollout_path(store: Path, env: Mapping[str, str]) -> Optional[tuple[Path, str, str]]:
+    """Newest existing rollout with its thread id and working folder.
+
+    Only ids and paths are selected; message columns are never read.  Older
+    stores have no id or cwd column and give empty strings.
+    """
     connection = _sqlite_connect_ro(store)
     if connection is None:
         return None
     rows: list[Any] = []
     try:
-        cursor = connection.execute(
-            "SELECT rollout_path FROM threads WHERE archived = 0 "
-            "ORDER BY updated_at_ms DESC LIMIT 8"
-        )
+        try:
+            cursor = connection.execute(
+                "SELECT rollout_path, id, cwd FROM threads WHERE archived = 0 "
+                "ORDER BY updated_at_ms DESC LIMIT 8"
+            )
+        except sqlite3.OperationalError:
+            cursor = connection.execute(
+                "SELECT rollout_path, '', '' FROM threads WHERE archived = 0 "
+                "ORDER BY updated_at_ms DESC LIMIT 8"
+            )
         rows = cursor.fetchmany(CODEX_MAX_ROLLOUT_PATHS)
     except (sqlite3.Error, OSError, ValueError, TypeError):
         return None
@@ -848,7 +870,9 @@ def _newest_rollout_path(store: Path, env: Mapping[str, str]) -> Optional[Path]:
             continue
         try:
             if path.is_file():
-                return path
+                thread = row[1] if isinstance(row[1], str) else ""
+                cwd = row[2] if isinstance(row[2], str) else ""
+                return path, thread, cwd
         except OSError:
             continue
     return None
@@ -900,32 +924,37 @@ def read_codex_sessions(
         else home / "sqlite" / "codex-dev.db"
     )
     current = _now_epoch(now)
-    candidates: list[tuple[float, str]] = []
+    # (modified, name, id, cwd)
+    candidates: list[tuple[float, str, str, str]] = []
 
     if state_path is not None:
         rollout = _newest_rollout_path(state_path, values)
         if rollout is not None:
+            path, thread, cwd = rollout
             try:
-                modified = float(rollout.stat().st_mtime)
+                modified = float(path.stat().st_mtime)
                 if math.isfinite(modified):
-                    candidates.append((modified, "Codex"))
+                    candidates.append((modified, "Codex", thread or path.stem, cwd))
             except (OSError, ValueError, TypeError):
                 pass
 
     if desktop_path is not None:
         desktop = _newest_desktop_thread(desktop_path)
         if desktop is not None:
-            candidates.append((desktop[1], desktop[0]))
+            candidates.append((desktop[1], desktop[0], "", ""))
 
     if not candidates:
         return []
-    modified, name = max(candidates, key=lambda item: item[0])
+    modified, name, thread, cwd = max(candidates, key=lambda item: item[0])
     age = _finite(stale_after)
     if age is None or age < 0:
         age = CODEX_STALE_SECONDS
     if not -5 <= current - modified <= age:
         return []
     return [{
+        "id": _clean_text(thread, "", 128),
+        # No pid: the extension finds the Codex process by this folder.
+        "cwd": _clean_text(cwd, "", 4096),
         "name": _clean_text(name, "Codex") or "Codex",
         "detail": "Recent activity (estimated)",
         "state": "busy",
@@ -958,6 +987,8 @@ def _demo_session(provider: str, now: float) -> dict[str, Any]:
     names = {"claude": "Claude Code", "cursor": "Cursor", "codex": "Codex"}
     waiting = provider == "cursor"
     return {
+        "id": f"demo-{provider}",
+        "pid": None,
         "name": names[provider],
         "detail": "Demo session" if not waiting else "Demo session needs input",
         "state": "waiting" if waiting else "busy",

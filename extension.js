@@ -1,3 +1,4 @@
+import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Meta from 'gi://Meta';
 import Shell from 'gi://Shell';
@@ -39,7 +40,9 @@ export default class Ledge extends Extension {
             path: this.path,
             changed: module => this._changed(module),
             openPreferences: () => this.openPreferences(),
+            alert: event => this._alert(event),
         };
+        this._notifications = new Gio.Settings({schema_id: 'org.gnome.desktop.notifications'});
         this._placement = this._createPlacement();
         this._settingsSignal = this._settings.connect('changed', (_s, key) => {
             if (/^(theme|custom-|glass-)/.test(key)) return;
@@ -48,6 +51,7 @@ export default class Ledge extends Extension {
                 this._placement.destroy();
                 this._placement = this._createPlacement();
             }
+            if (key === 'sound-preview') this._previewSound();
             this._placement.update(this._cells());
             this._placement.settingsChanged(key);
         });
@@ -66,6 +70,28 @@ export default class Ledge extends Extension {
             cells: () => this._cells(),
             openPreferences: () => this.openPreferences(),
         });
+    }
+
+    // A session finished or needs you: a sound, and in edge mode a short
+    // peek of the rail. Both respect Do Not Disturb (`show-banners`); the
+    // peek also stays away from a fullscreen window.
+    _alert({kind, key}) {
+        if (!this._alive || !this._notifications.get_boolean('show-banners')) return;
+        this._play(this._settings.get_string(kind === 'waiting' ? 'sound-waiting' : 'sound-finished'));
+        const seconds = this._settings.get_int('peek-seconds');
+        if (seconds > 0 && !global.display.focus_window?.is_fullscreen()) this._placement.peek?.(key, seconds);
+    }
+
+    _play(name) {
+        if (name) global.display.get_sound_player().play_from_theme(name, 'Ledge alert', null);
+    }
+
+    // Preferences ask for a preview by setting `sound-preview`; it is reset here.
+    _previewSound() {
+        const name = this._settings.get_string('sound-preview');
+        if (!name) return;
+        this._play(name);
+        this._settings.set_string('sound-preview', '');
     }
 
     // Starts modules whose key is on and stops the rest.
@@ -118,6 +144,6 @@ export default class Ledge extends Extension {
         this._settings.disconnect(this._settingsSignal);
         this._placement.destroy();
         this._appearance.destroy();
-        this._placement = this._appearance = this._settings = this._moduleHost = this._theme = null;
+        this._placement = this._appearance = this._settings = this._moduleHost = this._theme = this._notifications = null;
     }
 }

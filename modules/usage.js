@@ -1,7 +1,10 @@
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
+import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
 import {Module} from '../lib/module.js';
 import {run} from '../lib/subprocess.js';
+import {sessionEvents, limitAlerts} from '../lib/alerts.js';
+import {raiseSession} from '../lib/windows.js';
 import {PROVIDERS, NAMES, BADGES, percentage, resetText, normalize, usageSummary, remainingPercent} from '../model.js';
 import {PROVIDER_COLORS} from '../design.js';
 
@@ -13,6 +16,16 @@ const SIGTERM = 15;
 let source = null;
 export const usageSource = () => source;
 
+// Which limit steps each provider's headline window has reached. Kept at
+// module scope: the extension is disabled while the screen is locked, and
+// a crossing must not be announced again after unlocking.
+const limits = new Map();
+
+function notify(title, body) {
+    const tray = MessageTray.getSystemSource();
+    tray.addNotification(new MessageTray.Notification({source: tray, title, body}));
+}
+
 class UsageSource {
     constructor(host) {
         this.host = host;
@@ -21,6 +34,8 @@ class UsageSource {
         this.readings = [];
         this.activities = [];
         this.refreshing = new Set();
+        // Last state of each session, per provider; empty until the first reading.
+        this._history = new Map();
         this._generation = 0;
         this._activityGeneration = 0;
         this._settingsSignal = this.settings.connect('changed', (_s, key) => {
@@ -107,11 +122,28 @@ class UsageSource {
             try {
                 if (!result.ok || result.stdout.length > MAX_OUTPUT) throw new Error('Reader failed');
                 this.readings = normalize(JSON.parse(result.stdout), this.ids());
+                this._checkLimits();
             } catch {
                 this._readerFailed();
             }
             this._notify();
         });
+    }
+
+    // One notification per crossing of 80 and 100 % used on a provider's
+    // headline window, unless the provider is muted.
+    _checkLimits() {
+        const muted = this.settings.get_strv('alerts-muted');
+        for (const reading of this.readings) {
+            const window = reading.windows[0];
+            if (reading.status !== 'ok' || !window) continue;
+            const {alerts, state} = limitAlerts(limits.get(reading.id) ?? null, window);
+            limits.set(reading.id, state);
+            if (muted.includes(reading.id) || !alerts.length) continue;
+            const step = Math.max(...alerts);
+            notify(step >= 100 ? `${NAMES[reading.id]} limit reached` : `${NAMES[reading.id]} at ${step}%`,
+                `${window.label}: ${usageSummary(window.usedPercent)} · ${resetText(window.resetsAt)}`);
+        }
     }
 
     _readerFailed() {
@@ -134,23 +166,41 @@ class UsageSource {
         run(this._args('activity.py'), {timeout: 4, cancellable: this._activityCancel}).then(result => {
             if (generation !== this._activityGeneration) return;
             this._activityCancel = null;
-            let activities = [];
+            let data = null;
             try {
                 if (!result.ok || result.stdout.length > MAX_OUTPUT) throw new Error('Activity reader failed');
-                const data = JSON.parse(result.stdout);
-                if (data.version !== 1 || !Array.isArray(data.providers)) throw new Error('Invalid activity');
-                activities = data.providers.filter(row => this.members.has(row.id)).map(row => ({
-                    id: row.id,
-                    sessions: (Array.isArray(row.sessions) ? row.sessions : []).filter(s => ['busy', 'waiting', 'idle'].includes(s?.state)).slice(0, 12)
-                        .map(s => ({state: s.state, name: String(s.name || 'Session').slice(0, 100), detail: String(s.detail || '').slice(0, 160),
-                            waitingFor: s.waitingFor ? String(s.waitingFor).slice(0, 160) : '', derived: s.derived === true})),
-                }));
+                data = JSON.parse(result.stdout);
             } catch { /* Missing activity is unknown. */ }
-            if (JSON.stringify(activities) !== JSON.stringify(this.activities)) {
-                this.activities = activities;
-                this._notify();
-            }
+            this.ingestActivity(data);
         });
+    }
+
+    // Applies an activity document and announces session changes. The
+    // smoke test feeds scripted documents through here too.
+    ingestActivity(data) {
+        let activities = [];
+        if (data?.version === 1 && Array.isArray(data.providers)) {
+            activities = data.providers.filter(row => this.members.has(row?.id)).map(row => ({
+                id: row.id,
+                sessions: (Array.isArray(row.sessions) ? row.sessions : []).filter(s => ['busy', 'waiting', 'idle'].includes(s?.state)).slice(0, 12)
+                    .map(s => ({id: String(s.id || '').slice(0, 128), state: s.state,
+                        pid: Number.isInteger(s.pid) && s.pid > 0 ? s.pid : null, cwd: typeof s.cwd === 'string' ? s.cwd.slice(0, 4096) : '',
+                        name: String(s.name || 'Session').slice(0, 100), detail: String(s.detail || '').slice(0, 160),
+                        waitingFor: s.waitingFor ? String(s.waitingFor).slice(0, 160) : '', derived: s.derived === true})),
+            }));
+        }
+        for (const id of this.ids()) {
+            const sessions = activities.find(row => row.id === id)?.sessions;
+            // A provider with no reading keeps its history; its sessions are unknown, not gone.
+            if (!sessions) continue;
+            const {events, next} = sessionEvents(this._history.get(id) ?? null, sessions);
+            this._history.set(id, next);
+            for (const event of events) this.host.alert?.({...event, key: id});
+        }
+        if (JSON.stringify(activities) !== JSON.stringify(this.activities)) {
+            this.activities = activities;
+            this._notify();
+        }
     }
 
     sessions(id) { return this.activities.find(p => p.id === id)?.sessions ?? []; }
@@ -167,7 +217,21 @@ class UsageSource {
 }
 
 class UsageModule extends Module {
+    // Raises the window that runs `session`, or says it cannot be found.
+    async raise(session) {
+        const id = session.id || session.name;
+        const raised = await raiseSession(session, this.cancellable);
+        if (this.cancellable.is_cancelled()) return raised;
+        if (raised === this._lost.has(id)) {
+            if (raised) this._lost.delete(id);
+            else this._lost.add(id);
+            this.changed();
+        }
+        return raised;
+    }
+
     start() {
+        this._lost = new Set();
         source ??= new UsageSource(this.host);
         source.add(this);
     }
@@ -224,13 +288,15 @@ class UsageModule extends Module {
         const sessions = source?.sessions(this.id) ?? [];
         if (sessions.length) {
             const section = ui.section('Sessions');
+            // A session row raises the window that runs it.
             for (const session of sessions.slice(0, 4)) {
                 const state = session.state === 'waiting' ? 'waiting on you' : session.state === 'busy' ? 'working' : 'idle';
-                const row = ui.box('spacing: 0;');
-                row.add_child(ui.splitRow(session.name, state, session.state === 'waiting' ? 'ledge-watch' : 'ledge-caption'));
-                if (session.waitingFor || session.detail)
-                    row.add_child(ui.label(session.waitingFor || session.detail, 'ledge-caption'));
-                section.add_child(row);
+                const lost = this._lost.has(session.id || session.name);
+                section.add_child(ui.row(session.name, {
+                    detail: lost ? 'can\'t find the window for this session' : session.waitingFor || session.detail,
+                    trailing: [ui.label(state, session.state === 'waiting' ? 'ledge-watch' : 'ledge-caption')],
+                    onClick: () => this.raise(session),
+                }));
             }
             if (sessions.length > 4)
                 section.add_child(ui.label(`and ${sessions.length - 4} more`, 'ledge-caption'));

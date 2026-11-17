@@ -71,6 +71,23 @@ export default class LedgePreferences extends ExtensionPreferences {
         addSpin(usage, 'poll-seconds', 'Refresh interval', 'Seconds. Provider rate-limit backoff still applies.', 60, 1800, 60);
         addSwitch(usage, 'demo', 'Demo readings', 'Uses sample data. No accounts or network are read while enabled.');
 
+        const alerts = group('Alerts', 'When a coding session finishes or needs you. Do Not Disturb silences both.');
+        addSpin(alerts, 'peek-seconds', 'Peek', 'Seconds the edge rail unfolds to show the session; 0 turns it off.', 0, 30, 1);
+        const SOUNDS = ['complete', 'message-new-instant', 'bell', 'dialog-information', ''];
+        const SOUND_NAMES = ['Complete', 'Message', 'Bell', 'Information', 'None'];
+        for (const [key, title] of [['sound-finished', 'Finished sound'], ['sound-waiting', 'Waiting sound']]) {
+            const row = addChoice(alerts, key, title, SOUNDS, SOUND_NAMES);
+            const play = new Gtk.Button({icon_name: 'media-playback-start-symbolic', valign: Gtk.Align.CENTER,
+                tooltip_text: 'Play', css_classes: ['flat']});
+            play.connect('clicked', () => settings.set_string('sound-preview', settings.get_string(key)));
+            row.add_suffix(play);
+        }
+        const mutedRow = new Adw.EntryRow({title: 'Muted limit alerts (ids, comma separated: claude, cursor, codex)',
+            text: settings.get_strv('alerts-muted').join(', ')});
+        mutedRow.connect('changed', () => settings.set_strv('alerts-muted',
+            mutedRow.text.split(',').map(id => id.trim()).filter(Boolean)));
+        alerts.add(mutedRow);
+
         addSwitch(group('Power'), 'power', 'Power profile', 'Shows and switches the power-profiles-daemon profile.');
 
         addSwitch(group('Todo'), 'todo', 'Todo list', 'Stored in ~/.local/share/ledge/todos.json.');

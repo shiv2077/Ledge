@@ -9,7 +9,7 @@ subprocess.run(['glib-compile-schemas', '--strict', str(ROOT / 'schemas')], chec
 files = ['metadata.json', 'extension.js', 'model.js', 'design.js', 'draw.js',
          'prefs.js', 'stylesheet.css', 'LICENSE', 'THIRD_PARTY_LICENSES', 'README.md',
          'themes.js', 'lib/module.js', 'lib/subprocess.js', 'lib/http.js', 'lib/files.js',
-         'lib/appearance.js', 'lib/glass.js', 'lib/ui.js', 'lib/strip.js', 'lib/deck.js', 'lib/rail.js', 'lib/panel.js',
+         'lib/appearance.js', 'lib/glass.js', 'lib/ui.js', 'lib/strip.js', 'lib/deck.js', 'lib/rail.js', 'lib/panel.js', 'lib/alerts.js', 'lib/windows.js',
          'modules/usage.js', 'modules/power.js', 'modules/todo.js', 'modules/models.js',
          'modules/github.js', 'modules/training.js', 'tools/ledge_status.py',
          'reader/usage_reader.py', 'reader/activity.py',
