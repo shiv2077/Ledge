@@ -6,6 +6,7 @@ import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import {closeHttp} from './lib/http.js';
 import {Appearance} from './lib/appearance.js';
 import {Rail} from './lib/rail.js';
+import {Panel} from './lib/panel.js';
 import {USAGE_MODULES} from './modules/usage.js';
 import {PowerModule} from './modules/power.js';
 import {TodoModule} from './modules/todo.js';
@@ -16,8 +17,11 @@ import {TrainingModule} from './modules/training.js';
 // Chip order.
 const MODULES = [...USAGE_MODULES, PowerModule, TodoModule, ModelsModule, GithubModule, TrainingModule];
 
+// Keys that move Ledge to another placement; the old one is torn down.
+const PLACEMENT_KEYS = ['placement', 'panel-box', 'panel-position'];
+
 // The host: owns the modules and the theme, and hands their cells to the
-// placement, which draws the chips and the deck.
+// placement (top bar or screen edge), which draws the chips and the deck.
 export default class Ledge extends Extension {
     enable() {
         this._alive = true;
@@ -36,15 +40,14 @@ export default class Ledge extends Extension {
             changed: module => this._changed(module),
             openPreferences: () => this.openPreferences(),
         };
-        this._placement = new Rail({
-            settings: this._settings,
-            theme: () => this._theme,
-            cells: () => this._cells(),
-            openPreferences: () => this.openPreferences(),
-        });
+        this._placement = this._createPlacement();
         this._settingsSignal = this._settings.connect('changed', (_s, key) => {
             if (/^(theme|custom-|glass-)/.test(key)) return;
             if (MODULES.some(M => M.id === key)) this._syncModules();
+            if (PLACEMENT_KEYS.includes(key)) {
+                this._placement.destroy();
+                this._placement = this._createPlacement();
+            }
             this._placement.update(this._cells());
             this._placement.settingsChanged(key);
         });
@@ -53,6 +56,16 @@ export default class Ledge extends Extension {
         this._syncModules();
         this._placement.update(this._cells());
         this._placement.settingsChanged();
+    }
+
+    _createPlacement() {
+        const Placement = this._settings.get_string('placement') === 'edge' ? Rail : Panel;
+        return new Placement({
+            settings: this._settings,
+            theme: () => this._theme,
+            cells: () => this._cells(),
+            openPreferences: () => this.openPreferences(),
+        });
     }
 
     // Starts modules whose key is on and stops the rest.

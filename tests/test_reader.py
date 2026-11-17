@@ -259,9 +259,15 @@ class LocalReaderTests(unittest.TestCase):
              mock.patch.object(reader, "_read_claude", side_effect=AssertionError), \
              mock.patch.object(reader, "_read_cursor", side_effect=AssertionError), \
              mock.patch.object(reader, "purge_provider_cache", side_effect=AssertionError):
-            first = reader.read_document(["codex", "claude"], demo=True)
-            second = reader.read_document(["codex", "claude"], demo=True)
+            now = reader._utc_now()
+            first = reader.read_document(["codex", "claude"], demo=True, now=now)
+            second = reader.read_document(["codex", "claude"], demo=True, now=now)
+            later = reader.read_document(["codex"], demo=True, now=now + reader._dt.timedelta(minutes=5))
         self.assertEqual(first, second)
+        # Demo readings are dated when read; their resets stay fixed for the hour.
+        self.assertNotEqual(first["updatedAt"], later["updatedAt"])
+        if now.minute < 55:
+            self.assertEqual(first["providers"][0]["windows"], later["providers"][0]["windows"])
         self.assertTrue(all(item["source"] == "Demo" for item in first["providers"]))
 
 

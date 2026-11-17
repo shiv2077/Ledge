@@ -1371,10 +1371,10 @@ def demo_document(provider_ids: Iterable[str],
                   now: Optional[_dt.datetime] = None) -> dict[str, Any]:
     if now is None:
         now = _utc_now()
-    # Keep the synthetic readings stable for the lifetime of an hour while
-    # making the tooltip useful instead of showing a historical reset date.
+    # Demo readings are read now; their resets stay fixed for the hour, so
+    # the countdowns move like real ones.
+    demo_time = isoformat(now.astimezone(_dt.timezone.utc))
     now = now.astimezone(_dt.timezone.utc).replace(minute=0, second=0, microsecond=0)
-    demo_time = isoformat(now)
     demo_resets = {
         "codex_primary": isoformat(now + _dt.timedelta(hours=3)),
         "codex_secondary": isoformat(now + _dt.timedelta(days=3)),

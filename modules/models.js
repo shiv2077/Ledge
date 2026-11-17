@@ -13,7 +13,7 @@ const MEASURE_TIMEOUT = 120;
 
 export class ModelsModule extends Module {
     static id = 'models';
-    static title = 'Local Models';
+    static title = 'Local models';
 
     start() {
         this._ollama = null;

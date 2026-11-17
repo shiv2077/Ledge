@@ -258,6 +258,29 @@ export function resolveTheme(params) {
     };
 }
 
+// Colors for chips drawn on the rail.
+export function railPalette(t) {
+    return {
+        accent: color => t.accent(color, 'rail'), accentText: color => t.accentText(color, 'rail'),
+        meterOff: t.meterOff, led: t.led, hover: t.controlHover, focus: t.highlight, border: t.border, mark: t.textSecondary,
+    };
+}
+
+// Colors for chips drawn on the shell's top bar, whose background and text
+// color belong to the shell theme. Accents keep their hue and are fitted to
+// that background; unlit marks are mixed from it with the same floors.
+export function panelPalette(t, background, foreground) {
+    const bg = rgba(background)[3] < 0.5 ? '#000000' : over(background, '#000000');
+    const fit = (color, target) => fitAll(t[color] ?? color, [bg], target);
+    return {
+        accent: color => fit(color, MARK_CONTRAST), accentText: color => fit(color, TEXT_CONTRAST),
+        meterOff: ensureContrast(mix(bg, foreground, 0.18), bg, OFF_CONTRAST.meterOff),
+        led: ensureContrast(mix(bg, foreground, 0.3), bg, OFF_CONTRAST.led),
+        hover: mix(bg, foreground, 0.12), focus: fit(t.highlight, MARK_CONTRAST),
+        border: mix(bg, foreground, 0.2), mark: ensureContrast(mix(bg, foreground, 0.6), bg, MARK_CONTRAST),
+    };
+}
+
 // Swatch colors for the prefs picker: rail, deck, highlight, text.
 export function swatch(tokens) {
     return [tokens.rail, tokens.deck, tokens.highlight, tokens.textPrimary];
@@ -288,6 +311,8 @@ function themeRules(t) {
 .ledge-hairline { background-color: ${cssColor(t.border)}; }
 .ledge-action { color: ${cssColor(t.textSecondary)}; }
 .ledge-action:hover, .ledge-action:focus { color: ${cssColor(t.textPrimary)}; }
+.ledge-switch:hover, .ledge-switch-active { background-color: ${cssColor(t.controlHover)}; }
+.ledge-switch:focus { ${focusRing} }
 .ledge-small-action { background-color: ${cssColor(t.control)}; color: ${cssColor(t.textPrimary)}; }
 .ledge-small-action:hover { background-color: ${cssColor(t.controlHover)}; }
 .ledge-small-action:focus { background-color: ${cssColor(t.controlFocus)}; ${focusRing} }

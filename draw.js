@@ -78,21 +78,44 @@ function traceCut(cr, x, y, width, height, cut) {
     trace(cr, [[x, y], [x + width - cut, y], [x + width, y + cut], [x + width, y + height], [x, y + height]], true);
 }
 
-export function drawChipBackground(cr, width, height, fill, outline) {
+// A box with one corner cut, 'tl', 'tr', 'bl' or 'br', or none for null.
+function traceCorner(cr, x, y, width, height, cut, corner) {
+    const c = corner ? cut : 0;
+    const [l, t, r, b] = [x, y, x + width, y + height];
+    trace(cr, [
+        [l + (corner === 'tl' ? c : 0), t], [r - (corner === 'tr' ? c : 0), t], [r, t + (corner === 'tr' ? c : 0)],
+        [r, b - (corner === 'br' ? c : 0)], [r - (corner === 'br' ? c : 0), b], [l + (corner === 'bl' ? c : 0), b],
+        [l, b - (corner === 'bl' ? c : 0)], [l, t + (corner === 'tl' ? c : 0)],
+    ], true);
+}
+
+// Chip hover and focus backgrounds. `corner` is the cut corner, the one
+// facing away from the screen edge, or null for none.
+export function drawChipBackground(cr, width, height, fill, outline, corner) {
     cr.setOperator(0);
     cr.paint();
     cr.setOperator(2);
     if (fill) {
-        traceCut(cr, 0, 0, width, height, CHAMFER.small);
+        traceCorner(cr, 0, 0, width, height, CHAMFER.small, corner);
         source(cr, fill);
         cr.fill();
     }
     if (outline) {
-        traceCut(cr, 0.5, 0.5, width - 1, height - 1, CHAMFER.small);
+        traceCorner(cr, 0.5, 0.5, width - 1, height - 1, CHAMFER.small, corner);
         cr.setLineWidth(1);
         source(cr, outline);
         cr.stroke();
     }
+}
+
+// The tick as a small mark, for the summary chip.
+export function drawTickMark(cr, width, height, color) {
+    cr.setOperator(0);
+    cr.paint();
+    cr.setOperator(2);
+    trace(cr, chamferPoints('left', width, height, CHAMFER.small), true);
+    source(cr, color);
+    cr.fill();
 }
 
 // A row of segments. `fills` holds each segment's lit share, 0..1.

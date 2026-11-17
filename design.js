@@ -24,7 +24,22 @@ export const chipMeterWidth = () => METER.chip.segments * METER.chip.width + (ME
 
 export const LIGHT = {size: 6, breathMin: 0.45, breathPeriod: 1600, blinkOn: 120, blinkOff: 120, waitingBlinks: 3, doneBlinks: 2};
 
-export const CHIP = {panelHeight: 24, railHeight: 36, railWidth: 96, badge: 14, badgeAlpha: 0.18, meterGap: 2};
+// Chip widths: padding, badge, readout column and light, with `gap`
+// between them; compact drops the column; the summary chip holds a tick
+// mark and one light. Rail chips use 8 px gaps, top bar chips 4 px.
+export const chipWidth = (gap, compact = false) => 2 * gap + 14 + gap + (compact ? 0 : 44 + gap) + 6;
+export const CHIP = {panelHeight: 24, railHeight: 36, railGap: SPACE.sm, panelGap: SPACE.xs,
+    railWidth: chipWidth(SPACE.sm), panelWidth: chipWidth(SPACE.xs), compactWidth: chipWidth(SPACE.xs, true),
+    summaryWidth: 2 * SPACE.xs + 4 + SPACE.xs + 6, badge: 14, badgeAlpha: 0.18, meterGap: 2};
+
+// Which top bar strip fits `available` px: full chips, compact chips (badge
+// and light only), or one summary chip. Separators are 1 px.
+export function stripMode(count, available) {
+    const width = chip => count * chip + Math.max(0, count - 1);
+    if (width(CHIP.panelWidth) <= available) return 'full';
+    if (width(CHIP.compactWidth) <= available) return 'compact';
+    return 'summary';
+}
 export const TICK = {thickness: 4, length: 44, hotZone: 8, alpha: 0.85};
 export const RAIL = {padding: SPACE.xs, endPadding: SPACE.md, chipGap: SPACE.xs};
 export const DECK = {width: 340, padding: SPACE.lg, spacing: SPACE.md, rule: 2, bracket: 12, rowIcon: 16, actionIcon: 14};

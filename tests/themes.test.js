@@ -119,3 +119,22 @@ test('unlit segments and off lights stay visible on rail and deck', () => {
     }
     assert.equal(resolve('system').meterOff, BUILT_IN.graphite.meterOff, 'the desktop accent never tints other modules\' meters');
 });
+
+test('top bar chips fit the shell panel colors, not the theme rail', async () => {
+    const {panelPalette, railPalette} = await import('../themes.js');
+    for (const id of THEME_IDS) {
+        const t = resolve(id);
+        for (const [bg, fg] of [['#000000', '#ffffff'], ['#ffffff', '#000000'], ['#303030', '#eeeeee'], ['#00000000', '#ffffff']]) {
+            const p = panelPalette(t, bg, fg);
+            const base = rgba(bg)[3] < 0.5 ? '#000000' : bg;
+            for (const accent of [...Object.values(PROVIDER_COLORS), ...Object.values(MODULE_COLORS), 'watch', 'critical']) {
+                assert.ok(contrast(p.accent(accent), base) >= MARK_CONTRAST - 0.01, `${id} ${accent} on ${bg}`);
+                assert.ok(contrast(p.accentText(accent), base) >= TEXT_CONTRAST - 0.01, `${id} ${accent} text on ${bg}`);
+            }
+            assert.ok(contrast(p.meterOff, base) >= OFF_CONTRAST.meterOff - 0.01 && contrast(p.led, base) >= OFF_CONTRAST.led - 0.01, `${id} unlit on ${bg}`);
+        }
+        const r = railPalette(t);
+        assert.equal(r.meterOff, t.meterOff);
+        assert.equal(r.accent(PROVIDER_COLORS.claude), t.accent(PROVIDER_COLORS.claude, 'rail'));
+    }
+});

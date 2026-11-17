@@ -129,3 +129,14 @@ test('a deck stays within the rail span, centred on its chip', async () => {
     assert.equal(deckSpan(100, 400, 130, 200), 110, 'stays clear of the rail chamfer');
     assert.equal(deckSpan(100, 400, 490, 200), 290, 'at both ends');
 });
+
+test('the top bar strip falls back to compact chips, then one summary chip', async () => {
+    const {stripMode, CHIP} = await import('../design.js');
+    assert.equal(stripMode(8, 8 * CHIP.panelWidth + 7), 'full');
+    assert.equal(stripMode(8, 8 * CHIP.panelWidth + 6), 'compact');
+    assert.equal(stripMode(8, 8 * CHIP.compactWidth + 7), 'compact');
+    assert.equal(stripMode(8, 8 * CHIP.compactWidth + 6), 'summary');
+    assert.equal(stripMode(0, 0), 'full');
+    assert.deepEqual([CHIP.railWidth, CHIP.panelWidth, CHIP.compactWidth, CHIP.summaryWidth], [96, 80, 32, 22]);
+    for (const width of [CHIP.railWidth, CHIP.panelWidth, CHIP.compactWidth]) assert.equal(width % 4, 0, 'chip widths stay on the grid');
+});

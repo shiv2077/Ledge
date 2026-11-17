@@ -4,6 +4,21 @@
 .ledge-chip:hover, .ledge-chip:focus, .ledge-chip:active { background-color: transparent; }
 .ledge-readout { font-family: monospace; font-feature-settings: "tnum"; font-size: 12px; font-weight: 500; color: #e8ecf2; }
 .ledge-chip-icon { color: #e8ecf2; }
+/* Top bar chips take the panel's own text color. */
+.ledge-panel-readout { font-family: monospace; font-feature-settings: "tnum"; font-size: 12px; font-weight: 500; }
+/* The strip has no background of its own in the top bar; only the hovered
+   and the open chip are filled. The shell styles panel buttons by id. */
+#panel .ledge-panel-button, #panel .ledge-panel-button:hover, #panel .ledge-panel-button:active,
+#panel .ledge-panel-button:focus, #panel .ledge-panel-button:checked, #panel .ledge-panel-button:overview {
+    padding: 0; -natural-hpadding: 0; -minimum-hpadding: 0; border: 0; border-radius: 0;
+    background-color: transparent; box-shadow: none; }
+/* The deck is the only frame of the top bar menu: no chrome, no arrow. */
+.ledge-deck-menu { -arrow-rise: 0; -arrow-base: 0; -arrow-border-radius: 0; -arrow-border-width: 0; -boxpointer-gap: 0;
+    -arrow-background-color: transparent; -arrow-border-color: transparent; }
+.ledge-deck-menu .popup-menu-content { padding: 0; margin: 0; border: 0; border-radius: 0; box-shadow: none; background-color: transparent; }
+.ledge-switch { padding: 4px 0; background-color: transparent; }
+.ledge-switch:hover, .ledge-switch-active { background-color: #212730; }
+.ledge-switch:focus { box-shadow: inset 0 0 0 1px #9aa4b2; }
 .ledge-deck { color: #e8ecf2; box-shadow: 0 8px 24px 0 rgba(0, 0, 0, 0.4); }
 .ledge-deck-title { font-size: 13px; font-weight: 600; letter-spacing: 0.06em; color: #e8ecf2; }
 .ledge-stamp { font-family: monospace; font-feature-settings: "tnum"; font-size: 11px; color: #7e8794; }
@@ -12,7 +27,7 @@
 /* Figures inside the deck: counts, times, sizes. */
 .ledge-figure { font-family: monospace; font-feature-settings: "tnum"; font-size: 11px; color: #7e8794; }
 .ledge-section { font-size: 10px; font-weight: 600; letter-spacing: 0.08em; color: #7e8794; }
-.ledge-warning { font-size: 12px; color: #ff6b6b; }
+.ledge-warning { font-size: 11px; color: #ff6b6b; }
 .ledge-watch { font-size: 11px; color: #ffb020; }
 .ledge-hairline { background-color: #232a33; }
 /* Footer actions sit on the body column: no side padding, no fill. */
@@ -20,7 +35,7 @@
 .ledge-action { padding: 4px 0; border-radius: 0; background-color: transparent; color: #7e8794; font-size: 11px; }
 .ledge-action:hover { color: #e8ecf2; }
 .ledge-action:focus { color: #e8ecf2; text-decoration: underline; }
-.ledge-row { padding: 4px 8px; border-radius: 0; background-color: transparent; color: #e8ecf2; }
+.ledge-row { padding: 4px 0; border-radius: 0; background-color: transparent; color: #e8ecf2; }
 .ledge-row:hover { background-color: #161b22; }
 .ledge-row:focus { background-color: #212730; box-shadow: inset 0 0 0 1px #9aa4b2; }
 .ledge-row-active { background-color: #161b22; }

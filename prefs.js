@@ -35,13 +35,34 @@ export default class LedgePreferences extends ExtensionPreferences {
 
         this._appearance(page, settings, group);
 
-        const placement = group('Placement', 'Super+Shift+L opens Ledge; Escape closes it. Switched-off modules do no work and take no space.');
-        const edges = ['top', 'right', 'bottom', 'left'];
-        const edge = new Adw.ComboRow({title: 'Screen edge', model: Gtk.StringList.new(['Top', 'Right', 'Bottom', 'Left']), selected: edges.indexOf(settings.get_string('edge'))});
-        edge.connect('notify::selected', () => settings.set_string('edge', edges[edge.selected]));
-        placement.add(edge);
-        addSpin(placement, 'monitor', 'Monitor', '−1 follows the primary monitor; 0 is the first monitor.', -1, 32, 1);
-        addSwitch(placement, 'always-show', 'Always unfolded', 'Otherwise, rest the pointer on the tick at the screen edge to unfold the rail.');
+        const placement = group('Where Ledge lives', 'Super+Shift+L opens Ledge; Escape closes it. Switched-off modules do no work and take no space.');
+        // A choice row: `values` are stored in `key`, `labels` are shown.
+        const addChoice = (g, key, title, values, labels, subtitle = null) => {
+            const row = new Adw.ComboRow({title, subtitle, model: Gtk.StringList.new(labels),
+                selected: Math.max(0, values.indexOf(settings.get_string(key)))});
+            row.connect('notify::selected', () => settings.set_string(key, values[row.selected]));
+            g.add(row);
+            return row;
+        };
+        addChoice(placement, 'placement', 'Place', ['panel', 'edge'], ['Top bar', 'Screen edge']);
+        const panelRows = [
+            addChoice(placement, 'panel-box', 'Top bar section', ['left', 'center', 'right'], ['Left', 'Centre', 'Right']),
+            addSpin(placement, 'panel-position', 'Position in section', '−1 places it right after the clock in the centre, or last in other sections.', -1, 64, 1),
+            addSwitch(placement, 'panel-open-on-hover', 'Open on hover', 'Otherwise, click a chip to open its deck.'),
+        ];
+        const edgeRows = [
+            addChoice(placement, 'edge', 'Screen edge', ['top', 'right', 'bottom', 'left'], ['Top', 'Right', 'Bottom', 'Left']),
+            addSpin(placement, 'monitor', 'Monitor', '−1 follows the primary monitor; 0 is the first monitor.', -1, 32, 1),
+            addSwitch(placement, 'always-show', 'Always unfolded', 'Otherwise, rest the pointer on the tick at the screen edge to unfold the rail.'),
+        ];
+        // Only the options for the chosen place are shown.
+        const syncPlacement = () => {
+            const edge = settings.get_string('placement') === 'edge';
+            for (const row of panelRows) row.visible = !edge;
+            for (const row of edgeRows) row.visible = edge;
+        };
+        settings.connect('changed::placement', syncPlacement);
+        syncPlacement();
 
         const usage = group('Coding usage', 'Uses existing tool sign-ins. Turning a source off stops reads and removes its cached reading.');
         addSwitch(usage, 'claude', 'Claude Code', 'Reads the local Claude OAuth credential; run Claude to refresh an expired sign-in.');

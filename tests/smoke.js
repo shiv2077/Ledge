@@ -3,7 +3,7 @@
 import Ledge from './implementation.js';
 import {usageSource} from './modules/usage.js';
 import {rgba} from './themes.js';
-import {CHAMFER, DECK, TICK, MOTION, railSize} from './design.js';
+import {CHAMFER, CHIP, DECK, TICK, MOTION, railSize} from './design.js';
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 import Shell from 'gi://Shell';
@@ -25,6 +25,8 @@ export default class Smoke extends Ledge {
     enable() {
         this.getSettings().set_boolean('demo', true);
         this.getSettings().set_boolean('always-show', true);
+        // The rail checks run first; checkPanel covers the top bar.
+        this.getSettings().set_string('placement', 'edge');
         super.enable();
         this.runSmoke().catch(error => GLib.file_set_contents(`${output}/result.json`,
             JSON.stringify({ok: false, error: String(error), stack: error.stack, passed: checks, crops})));
@@ -102,6 +104,11 @@ export default class Smoke extends Ledge {
         const chip = id => this.R.strip.chips.get(id);
         assert(chip('claude').info.badge === 'CL' && chip('cursor').info.badge === 'CU' && chip('codex').info.badge === 'CX', 'Providers show monogram badges');
         assert(chip('claude')._meter.visible && !chip('power')._meter.visible, 'Only modules with a fraction show a chip meter');
+        const top = id => Math.round(chip(id)._readout.get_transformed_position()[1] - chip(id).actor.get_transformed_position()[1]);
+        const metered = IDS.filter(id => chip(id).info.meter);
+        assert(new Set(metered.map(top)).size === 1, 'Readouts over a meter share one baseline');
+        for (const id of IDS.filter(id => !chip(id).info.meter))
+            assert(Math.abs(top(id) + chip(id)._readout.height / 2 - chip(id).actor.height / 2) <= 1, `${id}: meterless readout is centred`);
         assert(chip('cursor').info.light === 'waiting' && chip('claude').info.light === 'working' && chip('power').info.light === 'off', 'Lights follow session state');
         for (const id of IDS) assert(chip(id).actor.width === 96 && chip(id).actor.height === 36, `${id}: chip is 96 by 36`);
         const icons = new St.IconTheme();
@@ -476,6 +483,168 @@ export default class Smoke extends Ledge {
         done('Overview dismissal, fold race, four edges, always-show');
     }
 
+    // Top bar placement: one status area button with the strip, the deck in
+    // its menu flush under the bar, aligned to the open chip.
+    async checkPanel(pointer, keyboard) {
+        const move = (x, y) => pointer.notify_absolute_motion(GLib.get_monotonic_time(), x, y);
+        const click = () => {
+            pointer.notify_button(GLib.get_monotonic_time(), Clutter.BUTTON_PRIMARY, Clutter.ButtonState.PRESSED);
+            pointer.notify_button(GLib.get_monotonic_time(), Clutter.BUTTON_PRIMARY, Clutter.ButtonState.RELEASED);
+        };
+        const key = keyval => {
+            keyboard.notify_keyval(GLib.get_monotonic_time(), keyval, Clutter.KeyState.PRESSED);
+            keyboard.notify_keyval(GLib.get_monotonic_time(), keyval, Clutter.KeyState.RELEASED);
+        };
+        const centre = actor => {
+            const [x, y] = actor.get_transformed_position();
+            return [x + actor.width / 2, y + actor.height / 2];
+        };
+        const chrome = () => ({ui: Main.uiGroup.get_n_children(), tracked: Main.layoutManager._trackedActors.length,
+            boxes: ['_leftBox', '_centerBox', '_rightBox'].map(b => Main.panel[b].get_n_children()).join()});
+        const edgeChrome = chrome();
+        this._settings.set_string('placement', 'panel');
+        await delay(600);
+        const P = this.R;
+        assert(Main.panel.statusArea.ledge === P.button, 'Top bar mode adds one status area button');
+        const centreBox = Main.panel._centerBox.get_children();
+        assert(centreBox.indexOf(P.button.container) === centreBox.indexOf(Main.panel.statusArea.dateMenu.container) + 1, 'Chips sit right after the clock');
+        assert(P.strip.chips.size === IDS.length && [...P.strip.chips.values()].every(c => c.actor.height === Main.panel.height && c.actor.width === CHIP.panelWidth),
+            `Every module has a bar-height ${CHIP.panelWidth} px chip, got ${[...P.strip.chips.values()].map(c => `${c.actor.width}x${c.actor.height}`)}; panel ${Main.panel.height}`);
+        const clock = Main.panel.statusArea.dateMenu.container;
+        const clockCentre = clock.get_transformed_position()[0] + clock.width / 2;
+        assert(Math.abs(clockCentre - Main.panel.width / 2) <= 2, `The clock stays centred, at ${clockCentre} of ${Main.panel.width}`);
+        const separators = P.strip.actor.get_children().filter(c => c.has_style_class_name('ledge-separator'));
+        assert(separators.length === IDS.length - 1 && separators.every(s => s.width === 1), 'Chips are separated by 1 px hairlines');
+        const chips = P.strip.chips;
+        // The menu paints nothing of its own: no arrow, padding, border, fill or shadow.
+        const pointerNode = P.menu.actor.get_theme_node();
+        const boxNode = P.menu.box.get_theme_node();
+        assert(['-arrow-rise', '-arrow-base', '-arrow-border-radius', '-arrow-border-width', '-boxpointer-gap'].every(p => pointerNode.get_length(p) === 0), 'Box pointer has no arrow or gap');
+        const fill = boxNode.get_background_color();
+        assert(fill.alpha === 0 && !boxNode.get_box_shadow() && [St.Side.TOP, St.Side.RIGHT, St.Side.BOTTOM, St.Side.LEFT].every(side =>
+            boxNode.get_padding(side) === 0 && boxNode.get_border_width(side) === 0), 'Menu box has no fill, shadow, padding or border');
+        await this.capture('panel', {x: 0, y: 0, width: 1920, height: Main.panel.height + PAD});
+        // Hovered, focused or open, the button itself stays unfilled.
+        for (const pseudo of ['hover', 'active', 'focus', 'checked']) {
+            P.button.add_style_pseudo_class(pseudo);
+            const node = P.button.get_theme_node();
+            assert(node.get_background_color().alpha === 0 && !node.get_box_shadow(), `Top bar button paints nothing when ${pseudo}`);
+            P.button.remove_style_pseudo_class(pseudo);
+        }
+        done('top bar strip after the clock, menu without chrome');
+
+        // Click opens the deck flush under the bar, aligned to the chip.
+        move(...centre(chips.get('cursor').actor));
+        await delay(120);
+        click();
+        await delay(300);
+        assert(P.menu.isOpen && P.deck.visible && P.deck.key === 'cursor', 'Clicking a chip opens its deck');
+        const deck = P.deck.actor;
+        const [dx, dy] = deck.get_transformed_position();
+        const panelBottom = Main.panel.get_transformed_position()[1] + Main.panel.height;
+        assert(Math.abs(dy - panelBottom) <= 1, `Deck sits flush under the top bar, ${dy} vs ${panelBottom}`);
+        assert(Math.abs(dx - chips.get('cursor').actor.get_transformed_position()[0]) <= 1, 'Deck aligns with its chip');
+        assert(P.deck.side === 'top' && chips.get('cursor').open, 'Deck rule faces the bar and the chip is marked open');
+        const chipFill = chips.get('cursor')._background;
+        const chipBottom = chipFill.get_transformed_position()[1] + chipFill.height;
+        assert(Math.abs(chipBottom - dy) <= 1, `The open chip meets its deck, chip ends at ${chipBottom}, deck starts at ${dy}`);
+        // Hovering another chip switches the open deck, as between panel menus.
+        move(...centre(chips.get('github').actor));
+        await delay(300);
+        assert(P.deck.key === 'github' && P.menu.isOpen, `Hovering another chip switches the deck: key ${P.deck.key}, open ${P.menu.isOpen}, chip hover ${chips.get('github').actor.hover}, button hover ${P.button.hover}, grab ${global.stage.get_grab_actor()}`);
+        assert(Math.abs(deck.get_transformed_position()[0] - chips.get('github').actor.get_transformed_position()[0]) <= 1, 'Deck follows the hovered chip');
+        key(Clutter.KEY_Escape);
+        await delay(200);
+        assert(!P.menu.isOpen && !P.deck.visible, 'Escape closes the deck');
+        done('click opens, hover switches, Escape closes');
+
+        for (const id of IDS) {
+            move(...centre(chips.get(id).actor));
+            await delay(100);
+            click();
+            await delay(300);
+            assert(P.deck.visible && P.deck.key === id, `${id}: panel deck opens`);
+            const [x, y] = deck.get_transformed_position();
+            const area = Main.layoutManager.getWorkAreaForMonitor(Main.layoutManager.primaryIndex);
+            assert(x >= area.x && x + deck.width <= area.x + area.width, `${id}: panel deck stays on the monitor`);
+            assert(Math.abs(this.footerInsetOf(P.deck) - DECK.padding) <= 1, `${id}: panel deck footer inset`);
+            await this.capture(`panel-deck-${id}`, {x: Math.max(0, x - PAD), y: 0, width: DECK.width + 2 * PAD, height: y + deck.height + PAD});
+            P.close();
+            await delay(150);
+        }
+        // A click outside closes the deck.
+        move(...centre(chips.get('claude').actor));
+        await delay(100);
+        click();
+        await delay(250);
+        move(900, 700);
+        await delay(100);
+        click();
+        await delay(250);
+        assert(!P.menu.isOpen, 'A click outside closes the deck');
+        done('every deck under the top bar');
+
+        // Narrow panels: readouts go first, then one summary chip.
+        P.setAvailable(IDS.length * CHIP.compactWidth + IDS.length);
+        await delay(200);
+        assert(P.strip.mode === 'compact' && [...chips.values()].every(c => c.actor.width === CHIP.compactWidth && !c._column.visible), 'Compact chips keep badge and light');
+        await this.capture('panel-compact', {x: 0, y: 0, width: 1920, height: Main.panel.height + PAD});
+        P.setAvailable(200);
+        await delay(200);
+        assert(P.strip.mode === 'summary' && P.strip.summaryActor?.visible && [...chips.values()].every(c => !c.actor.visible), 'Narrow bar shows one summary chip');
+        move(...centre(P.strip.summaryActor));
+        await delay(100);
+        click();
+        await delay(300);
+        const switcher = P.deck._content.get_first_child();
+        assert(P.deck.key === 'github' && P.strip._summary.open, `Summary chip opens on the module its light stands for, got ${P.deck.key}`);
+        assert(Math.abs(deck.get_transformed_position()[0] - P.strip.summaryActor.get_transformed_position()[0]) <= 1, 'Summary deck aligns with the summary chip');
+        assert(P.deck.visible && switcher.get_n_children() === IDS.length && switcher.get_children().every(b => b.has_style_class_name('ledge-switch')), 'Summary deck has a module switcher row');
+        switcher.get_child_at_index(5).emit('clicked', 1);
+        await delay(250);
+        assert(P.deck.key === 'models', 'Switcher changes module');
+        const [sx, sy] = deck.get_transformed_position();
+        await this.capture('panel-summary', {x: Math.max(0, sx - PAD), y: 0, width: DECK.width + 2 * PAD, height: sy + deck.height + PAD});
+        P.close();
+        P.setAvailable(null);
+        await delay(200);
+        assert(P.strip.mode === 'full', 'Wide bar restores full chips');
+        done('narrow top bar: compact chips, summary chip, switcher');
+
+        // An idle top bar strip repaints nothing.
+        move(900, 700);
+        await delay(400);
+        let repaints = 0;
+        const watched = P.canvases().map(area => [area, area.connect('repaint', () => repaints++)]);
+        await delay(2000);
+        for (const [area, id] of watched) area.disconnect(id);
+        assert(repaints === 0, `Idle top bar strip must not repaint, saw ${repaints}`);
+        done('idle top bar repaint count is zero');
+
+        // Switching placement both ways leaves nothing behind.
+        const panelChrome = chrome();
+        for (let i = 0; i < 5; i++) {
+            this._settings.set_string('placement', 'edge');
+            await delay(250);
+            assert(!Main.panel.statusArea.ledge && this.R.sensor, `Switch ${i}: edge mode has no top bar button`);
+            assert(JSON.stringify(chrome()) === JSON.stringify(edgeChrome), `Switch ${i}: edge chrome ${JSON.stringify(chrome())} vs ${JSON.stringify(edgeChrome)}`);
+            this._settings.set_string('placement', 'panel');
+            await delay(250);
+            assert(Main.panel.statusArea.ledge === this.R.button, `Switch ${i}: top bar button is back`);
+            assert(JSON.stringify(chrome()) === JSON.stringify(panelChrome), `Switch ${i}: panel chrome ${JSON.stringify(chrome())} vs ${JSON.stringify(panelChrome)}`);
+        }
+        await this.capture('switch-panel', {x: 0, y: 0, width: 1920, height: Main.panel.height + PAD});
+        this._settings.set_string('placement', 'edge');
+        await delay(900);
+        await this.capture('switch-edge');
+        done('placement switch both ways, five times, no leaks');
+    }
+
+    footerInsetOf(deck) {
+        const footer = deck._content.get_last_child();
+        return deck.actor.height - footer.y - footer.height;
+    }
+
     async runSmoke() {
         await delay(2200);
         Main.overview.hide();
@@ -495,6 +664,8 @@ export default class Smoke extends Ledge {
         const placements = await this.checkEdges(move);
         await this.checkReducedMotion();
         await this.checkOverview();
+        const keyboard = Clutter.get_default_backend().get_default_seat().create_virtual_device(Clutter.InputDeviceType.KEYBOARD_DEVICE);
+        await this.checkPanel(pointer, keyboard);
 
         this._settings.set_boolean('cursor', false);
         await delay(600);
