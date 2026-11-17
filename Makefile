@@ -1,7 +1,7 @@
 # Snap-packaged terminals (VS Code) inject libraries and schemas that break gjs
 # and gnome-shell, so those targets run in a clean environment.
 CLEAN_ENV = env -i HOME=$(HOME) PATH=/usr/bin:/bin XDG_RUNTIME_DIR=$(XDG_RUNTIME_DIR) LANG=C.UTF-8
-.PHONY: test package install smoke dev-link reload nested demo-assets
+.PHONY: test package install smoke dev-link reload nested demo-assets diagrams links
 test:
 	node --test tests/*.test.js
 	python3 -m unittest discover -s tests -p 'test_*.py' -v
@@ -16,6 +16,10 @@ smoke:
 	$(CLEAN_ENV) python3 scripts/smoke.py
 demo-assets: smoke
 	python3 scripts/export_demo_assets.py
+diagrams:
+	python3 scripts/diagrams.py
+links:
+	python3 scripts/check_links.py
 dev-link:
 	@rm -rf $(HOME)/.local/share/gnome-shell/extensions/ledge@shiv2077
 	@ln -sfn $(CURDIR) $(HOME)/.local/share/gnome-shell/extensions/ledge@shiv2077
@@ -24,7 +28,6 @@ dev-link:
 reload: dev-link
 	gnome-extensions disable ledge@shiv2077 && gnome-extensions enable ledge@shiv2077
 	@test -f $(HOME)/.local/share/gnome-shell/extensions/ledge@shiv2077/extension.js
-	@grep -q '_onOverviewShowing' $(HOME)/.local/share/gnome-shell/extensions/ledge@shiv2077/extension.js
 # GJS caches ES modules, so edited JS needs a fresh shell. This runs one in a window
 # (needs mutter-devkit, from the mutter-dev-bin package).
 nested: dev-link

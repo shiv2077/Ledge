@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1198" height="730" viewBox="0 0 1198 730" font-family="sans-serif" font-size="15"><title>Ledge architecture</title>
+<defs><marker id="head" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#232A33"/></marker></defs>
+<rect width="1198" height="730" fill="#FFFFFF"/>
+<line x1="244" y1="220.0" x2="334" y2="104.0" stroke="#232A33" stroke-width="1.2" marker-end="url(#head)"/>
+<line x1="244" y1="220.0" x2="334" y2="162.0" stroke="#232A33" stroke-width="1.2" marker-end="url(#head)"/>
+<line x1="554" y1="104.0" x2="334" y2="278.0" stroke="#232A33" stroke-width="1.2" marker-end="url(#head)"/>
+<line x1="554" y1="104.0" x2="334" y2="336.0" stroke="#232A33" stroke-width="1.2" marker-end="url(#head)"/>
+<line x1="554" y1="162.0" x2="334" y2="278.0" stroke="#232A33" stroke-width="1.2" marker-end="url(#head)"/>
+<line x1="554" y1="162.0" x2="334" y2="336.0" stroke="#232A33" stroke-width="1.2" marker-end="url(#head)"/>
+<line x1="244" y1="220.0" x2="644" y2="46.0" stroke="#232A33" stroke-width="1.2" marker-end="url(#head)"/>
+<line x1="864" y1="46.0" x2="954" y2="46.0" stroke="#232A33" stroke-width="1.2" marker-end="url(#head)"/>
+<line x1="864" y1="46.0" x2="954" y2="104.0" stroke="#232A33" stroke-width="1.2" marker-end="url(#head)"/>
+<line x1="864" y1="46.0" x2="954" y2="162.0" stroke="#232A33" stroke-width="1.2" marker-end="url(#head)"/>
+<line x1="244" y1="220.0" x2="644" y2="104.0" stroke="#232A33" stroke-width="1.2" marker-end="url(#head)"/>
+<line x1="864" y1="104.0" x2="954" y2="220.0" stroke="#232A33" stroke-width="1.2" marker-end="url(#head)"/>
+<line x1="244" y1="220.0" x2="644" y2="162.0" stroke="#232A33" stroke-width="1.2" marker-end="url(#head)"/>
+<line x1="864" y1="162.0" x2="954" y2="278.0" stroke="#232A33" stroke-width="1.2" marker-end="url(#head)"/>
+<line x1="244" y1="220.0" x2="644" y2="220.0" stroke="#232A33" stroke-width="1.2" marker-end="url(#head)"/>
+<line x1="864" y1="220.0" x2="954" y2="336.0" stroke="#232A33" stroke-width="1.2" marker-end="url(#head)"/>
+<line x1="864" y1="220.0" x2="954" y2="394.0" stroke="#232A33" stroke-width="1.2" marker-end="url(#head)"/>
+<line x1="864" y1="220.0" x2="954" y2="452.0" stroke="#232A33" stroke-width="1.2" marker-end="url(#head)"/>
+<line x1="864" y1="220.0" x2="954" y2="510.0" stroke="#232A33" stroke-width="1.2" marker-end="url(#head)"/>
+<line x1="864" y1="220.0" x2="954" y2="568.0" stroke="#232A33" stroke-width="1.2" marker-end="url(#head)"/>
+<line x1="244" y1="220.0" x2="644" y2="278.0" stroke="#232A33" stroke-width="1.2" marker-end="url(#head)"/>
+<line x1="864" y1="278.0" x2="954" y2="626.0" stroke="#232A33" stroke-width="1.2" marker-end="url(#head)"/>
+<line x1="244" y1="220.0" x2="644" y2="336.0" stroke="#232A33" stroke-width="1.2" marker-end="url(#head)"/>
+<line x1="864" y1="336.0" x2="954" y2="626.0" stroke="#232A33" stroke-width="1.2" marker-end="url(#head)"/>
+<line x1="244" y1="220.0" x2="644" y2="394.0" stroke="#232A33" stroke-width="1.2" marker-end="url(#head)"/>
+<line x1="864" y1="394.0" x2="954" y2="684.0" stroke="#232A33" stroke-width="1.2" marker-end="url(#head)"/>
+<rect x="24" y="198" width="220" height="44" fill="#E8ECF2" stroke="#232A33" stroke-width="1"/>
+<text x="134.0" y="225.0" text-anchor="middle" fill="#232A33">extension.js (host)</text>
+<rect x="334" y="82" width="220" height="44" fill="#D7E3FC" stroke="#232A33" stroke-width="1"/>
+<text x="444.0" y="109.0" text-anchor="middle" fill="#232A33">lib/rail.js (edge)</text>
+<rect x="334" y="140" width="220" height="44" fill="#D7E3FC" stroke="#232A33" stroke-width="1"/>
+<text x="444.0" y="167.0" text-anchor="middle" fill="#232A33">lib/panel.js (top bar)</text>
+<rect x="334" y="256" width="220" height="44" fill="#D7E3FC" stroke="#232A33" stroke-width="1"/>
+<text x="444.0" y="283.0" text-anchor="middle" fill="#232A33">lib/strip.js (chips)</text>
+<rect x="334" y="314" width="220" height="44" fill="#D7E3FC" stroke="#232A33" stroke-width="1"/>
+<text x="444.0" y="341.0" text-anchor="middle" fill="#232A33">lib/deck.js (deck)</text>
+<rect x="644" y="24" width="220" height="44" fill="#E2F5D8" stroke="#232A33" stroke-width="1"/>
+<text x="754.0" y="51.0" text-anchor="middle" fill="#232A33">Claude, Cursor, Codex · usage.js</text>
+<rect x="954" y="24" width="220" height="44" fill="#FCE7D2" stroke="#232A33" stroke-width="1"/>
+<text x="1064.0" y="51.0" text-anchor="middle" fill="#232A33">reader/costs.py</text>
+<rect x="954" y="82" width="220" height="44" fill="#FCE7D2" stroke="#232A33" stroke-width="1"/>
+<text x="1064.0" y="109.0" text-anchor="middle" fill="#232A33">reader/usage_reader.py</text>
+<rect x="954" y="140" width="220" height="44" fill="#FCE7D2" stroke="#232A33" stroke-width="1"/>
+<text x="1064.0" y="167.0" text-anchor="middle" fill="#232A33">reader/activity.py</text>
+<rect x="644" y="82" width="220" height="44" fill="#E2F5D8" stroke="#232A33" stroke-width="1"/>
+<text x="754.0" y="109.0" text-anchor="middle" fill="#232A33">Power · power.js</text>
+<rect x="954" y="198" width="220" height="44" fill="#FCE7D2" stroke="#232A33" stroke-width="1"/>
+<text x="1064.0" y="225.0" text-anchor="middle" fill="#232A33">power-profiles-daemon (D-Bus)</text>
+<rect x="644" y="140" width="220" height="44" fill="#E2F5D8" stroke="#232A33" stroke-width="1"/>
+<text x="754.0" y="167.0" text-anchor="middle" fill="#232A33">Todo · todo.js</text>
+<rect x="954" y="256" width="220" height="44" fill="#FCE7D2" stroke="#232A33" stroke-width="1"/>
+<text x="1064.0" y="283.0" text-anchor="middle" fill="#232A33">~/.local/share/ledge/todos.json</text>
+<rect x="644" y="198" width="220" height="44" fill="#E2F5D8" stroke="#232A33" stroke-width="1"/>
+<text x="754.0" y="225.0" text-anchor="middle" fill="#232A33">Models · models.js</text>
+<rect x="954" y="314" width="220" height="44" fill="#FCE7D2" stroke="#232A33" stroke-width="1"/>
+<text x="1064.0" y="341.0" text-anchor="middle" fill="#232A33">reader/lmstudio.py</text>
+<rect x="954" y="372" width="220" height="44" fill="#FCE7D2" stroke="#232A33" stroke-width="1"/>
+<text x="1064.0" y="399.0" text-anchor="middle" fill="#232A33">localhost:11434</text>
+<rect x="954" y="430" width="220" height="44" fill="#FCE7D2" stroke="#232A33" stroke-width="1"/>
+<text x="1064.0" y="457.0" text-anchor="middle" fill="#232A33">localhost:1234</text>
+<rect x="954" y="488" width="220" height="44" fill="#FCE7D2" stroke="#232A33" stroke-width="1"/>
+<text x="1064.0" y="515.0" text-anchor="middle" fill="#232A33">localhost:llamacpp-port</text>
+<rect x="954" y="546" width="220" height="44" fill="#FCE7D2" stroke="#232A33" stroke-width="1"/>
+<text x="1064.0" y="573.0" text-anchor="middle" fill="#232A33">nvidia-smi</text>
+<rect x="644" y="256" width="220" height="44" fill="#E2F5D8" stroke="#232A33" stroke-width="1"/>
+<text x="754.0" y="283.0" text-anchor="middle" fill="#232A33">GitHub · github.js</text>
+<rect x="954" y="604" width="220" height="44" fill="#FCE7D2" stroke="#232A33" stroke-width="1"/>
+<text x="1064.0" y="631.0" text-anchor="middle" fill="#232A33">gh CLI</text>
+<rect x="644" y="314" width="220" height="44" fill="#E2F5D8" stroke="#232A33" stroke-width="1"/>
+<text x="754.0" y="341.0" text-anchor="middle" fill="#232A33">Copilot · copilot.js</text>
+<rect x="644" y="372" width="220" height="44" fill="#E2F5D8" stroke="#232A33" stroke-width="1"/>
+<text x="754.0" y="399.0" text-anchor="middle" fill="#232A33">Training · training.js</text>
+<rect x="954" y="662" width="220" height="44" fill="#FCE7D2" stroke="#232A33" stroke-width="1"/>
+<text x="1064.0" y="689.0" text-anchor="middle" fill="#232A33">~/.local/share/ledge/runs</text>
+</svg>

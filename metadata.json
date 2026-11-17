@@ -1,9 +1,9 @@
 {
   "uuid": "ledge@shiv2077",
   "name": "Ledge",
-  "description": "A small notch on the screen edge with widgets for coding usage, power, todos, local models, GitHub and training runs.",
-  "shell-version": ["46", "47", "48", "49", "50"],
-  "version": 1,
+  "description": "An instrument strip in the top bar or on a screen edge: coding usage and spend, power, todos, local models, GitHub, Copilot and training runs.",
+  "shell-version": ["50"],
+  "version": 2,
   "settings-schema": "org.gnome.shell.extensions.ledge",
   "url": "https://github.com/shiv2077/Ledge"
 }
