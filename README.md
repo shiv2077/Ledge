@@ -21,13 +21,12 @@ Ledge is a GNOME Shell extension for people who code with several AI agents at o
 ## Contents
 
 - [Highlights](#highlights)
-- [Multiple agents at a glance](#multiple-agents-at-a-glance)
-- [Usage limits and spend](#usage-limits-and-spend)
-- [Everything else in the strip](#everything-else-in-the-strip)
+- [Features](#features): [agents](#multiple-agents-at-a-glance), [Claude Code](#claude-code-limits-and-spend), [Codex](#codex-limits), [todo](#todo), [power](#power), [GitHub](#github), [training](#training)
 - [System design](#system-design)
 - [Alerts](#alerts)
 - [Appearance](#appearance)
 - [Installation](#installation)
+- [Exact agent states with hooks](#exact-agent-states-with-hooks)
 - [Usage](#usage)
 - [Reporting training runs](#reporting-training-runs)
 - [Privacy and security](#privacy-and-security)
@@ -45,7 +44,9 @@ Ledge is a GNOME Shell extension for people who code with several AI agents at o
 - **A design of its own.** A dot-matrix display style: white on matte black, with red kept for what needs you.
 - **Local and private.** No telemetry, no stored tokens, and message text is never read. Every read is asynchronous, so the desktop never stalls.
 
-## Multiple agents at a glance
+## Features
+
+### Multiple agents at a glance
 
 ![The agents dropdown: two agents waiting on you listed first, then one group per worktree, with a clash tag where two agents share a tree](docs/screenshots/agents.webp)
 
@@ -58,48 +59,41 @@ Coding with AI now often means several agents at once, in separate terminals, pa
 2. **Then one group per git worktree.** A red **2 active · same tree** tag marks agents working in the same tree.
 3. **Each row** shows the tool, folder and branch, time in that state, and how Ledge knows it. Click a row to raise that agent's window or pane.
 
-![Agent pipeline: signals, collect, understand, surface](docs/diagrams/agents.svg)
-
-| Where agents are found | What Ledge learns | Tested by hand |
-| --- | --- | --- |
-| **Agent hooks** (Claude Code) | Exact states: working, waiting for permission or input, finished | yes |
-| **Multi-agent terminal workspace** | Agents in each pane, exact states, and pane focus for the jump | yes |
-| **Session files** (Claude Code, Codex) | Estimated states when no hook reports, marked ◦ | Claude yes, Codex not yet |
-| **Running processes** | Any agent CLI (claude, codex, opencode, pi, amp, gemini, aider), shown as *running* | yes |
-
-**Exact Claude Code states with hooks:**
-1. Run `make agent-tools`. It installs the small hook writer, `tools/ledge_agent.py`, to `~/.local/share/ledge/tools/`.
-2. Merge [`tools/hooks/claude-code-settings.json`](tools/hooks/claude-code-settings.json) into `~/.claude/settings.json`. Ledge never edits that file itself.
-3. Under Preferences → Agents, press **Check** to confirm the hooks are in place.
-
-The hook records only the session id, folder, state, the agent's process id and a time, never message text. Any script or tool can report the same way:
-
-```sh
-python3 ~/.local/share/ledge/tools/ledge_agent.py --id build-bot --tool mybot --state working --cwd .
-```
-
-## Usage limits and spend
+### Claude Code limits and spend
 
 ![Claude Code dropdown: current session and weekly limits with pace, and spend for today and the last 7 days by project](docs/screenshots/claude.webp)
 
-**Claude Code.** Each limit window is a dotted bar with its reset time and pace, such as "17% ahead of pace". Below it is the estimated spend today and over 7 days, per project, read from your local transcripts at API list prices.
+Each limit window is a dotted bar with its reset time and pace, such as "17% ahead of pace". Below it is the estimated spend today and over 7 days, per project, read from your local transcripts at API list prices.
+
+### Codex limits
 
 ![Codex dropdown: monthly limit with pace and spend](docs/screenshots/codex.webp)
 
-**Codex.** The same view for Codex limits.
+The same view for Codex limits. A dial turns red when little is left. Extra sign-ins such as `~/.claude-work` or `~/.codex-side` get their own dials.
 
-A dial turns red when little is left. Extra sign-ins such as `~/.claude-work` or `~/.codex-side` get their own dials.
+### Todo
 
-## Everything else in the strip
+![Todo dropdown with an entry field](docs/screenshots/todo.webp)
 
-![Power, Todo, GitHub and Training dropdowns](docs/screenshots/widgets.webp)
+Type and press Enter to add a todo; tick it to complete. Todos stay in `~/.local/share/ledge/todos.json`.
 
-| Widget | What it does |
-| --- | --- |
-| **Power** (top left) | Shows the active power profile; click another to switch |
-| **Todo** (top right) | Type and press Enter to add; tick to complete |
-| **GitHub** (bottom left) | Review requests, your open pull requests and CI for repositories you watch, through the `gh` CLI |
-| **Training** (bottom right) | Live epoch and loss for runs that report with `tools/ledge_status.py`, and a notice when one finishes, crashes or stalls |
+### Power
+
+![Power dropdown with Power saver, Balanced and Performance](docs/screenshots/power.webp)
+
+Shows the active power profile; click another to switch.
+
+### GitHub
+
+![GitHub dropdown with review requests and your open pull requests](docs/screenshots/github.webp)
+
+Review requests, your open pull requests and CI for repositories you watch, read through the `gh` CLI.
+
+### Training
+
+![Training dropdown with a finished run, its epoch and loss](docs/screenshots/training.webp)
+
+Live epoch and loss for runs that report with `tools/ledge_status.py`, plus a notice when one finishes, crashes or stalls.
 
 Local models (Ollama, LM Studio, llama.cpp) and the GitHub Copilot quota can be switched on in Preferences.
 
@@ -116,6 +110,17 @@ Ledge closes one loop between you and your agents:
 | **Understand** | Signals become one entry per agent. Ledge adds each agent's worktree and branch, flags clashes, orders who has waited longest, and works out pace and spend |
 | **Surface** | The lens, the dot strip and the dropdowns show it. Red appears only when something needs you |
 | **Act** | You jump to the waiting agent, approve or answer it, or pace your work. The agents carry on and the loop repeats |
+
+### How agents are found
+
+![Agent pipeline: signals, collect, understand, surface](docs/diagrams/agents.svg)
+
+| Where agents are found | What Ledge learns | Tested by hand |
+| --- | --- | --- |
+| **Agent hooks** (Claude Code) | Exact states: working, waiting for permission or input, finished | yes |
+| **Multi-agent terminal workspace** | Agents in each pane, exact states, and pane focus for the jump | yes |
+| **Session files** (Claude Code, Codex) | Estimated states when no hook reports, marked ◦ | Claude yes, Codex not yet |
+| **Running processes** | Any agent CLI (claude, codex, opencode, pi, amp, gemini, aider), shown as *running* | yes |
 
 Everything stays on your machine. More detail is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [DECISIONS.md](DECISIONS.md) and [docs/TESTING.md](docs/TESTING.md). Both diagrams have an editable Excalidraw file beside them in [`docs/diagrams/`](docs/diagrams).
 
@@ -177,6 +182,19 @@ Do not edit any other settings.
 Ledge is submitted to [extensions.gnome.org](https://extensions.gnome.org/extension/11824/ledge/) and waiting for review. Once approved, install it with one click there or from the Extension Manager app.
 
 `make package` writes a shareable zip to `dist/ledge@shiv2077.shell-extension.zip`.
+
+## Exact agent states with hooks
+
+For exact Claude Code states:
+1. Run `make agent-tools`. It installs the small hook writer, `tools/ledge_agent.py`, to `~/.local/share/ledge/tools/`.
+2. Merge [`tools/hooks/claude-code-settings.json`](tools/hooks/claude-code-settings.json) into `~/.claude/settings.json`. Ledge never edits that file itself.
+3. Under Preferences → Agents, press **Check** to confirm the hooks are in place.
+
+The hook records only the session id, folder, state, the agent's process id and a time, never message text. Any script or tool can report the same way:
+
+```sh
+python3 ~/.local/share/ledge/tools/ledge_agent.py --id build-bot --tool mybot --state working --cwd .
+```
 
 ## Usage
 
