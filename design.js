@@ -88,11 +88,37 @@ export function dotGlyphs(text) {
 // looks like a display settling rather than a wipe.
 export const dotOrder = (column, row) => ((column * 7 + row * 13) % 17) / 17;
 
+// Provider marks as dots placed along their strokes, in a unit circle
+// (x, y in -1..1): the Claude spark as rays, the OpenAI knot as six
+// interlocking arcs. Returns [[x, y], ...].
+export function logoDots(id) {
+    const points = [];
+    if (id === 'claude') {
+        points.push([0, 0]);
+        for (let i = 0; i < 6; i++) points.push([0.22 * Math.cos(i * Math.PI / 3), 0.22 * Math.sin(i * Math.PI / 3)]);
+        for (let i = 0; i < 12; i++) {
+            const angle = i * Math.PI / 6 - Math.PI / 2;
+            const radii = i % 2 ? [0.5, 0.75] : [0.5, 0.75, 1];
+            for (const r of radii) points.push([r * Math.cos(angle), r * Math.sin(angle)]);
+        }
+    } else if (id === 'codex') {
+        for (let k = 0; k < 6; k++) {
+            const t = k * Math.PI / 3;
+            const [cx, cy] = [0.36 * Math.cos(t), 0.36 * Math.sin(t)];
+            for (let j = 0; j < 5; j++) {
+                const a = t + Math.PI * (0.5 + j * 0.2);
+                points.push([cx + 0.6 * Math.cos(a), cy + 0.6 * Math.sin(a)]);
+            }
+        }
+    }
+    return points;
+}
+
 export const SHELF = {
     lensWidth: 40, lensTrace: 14, lensRadius: 9, lensMargin: 4,
     dot: 4, dotGap: 2, barDots: 12, barDot: 4, barGap: 3, gaugeWidth: 96,
-    flare: 16, figDot: 3, figGap: 1, iconDot: 2, iconGap: 1, dial: {size: 38, dots: 28, dot: 2.5}, cellGap: 8, divider: 3, reveal: 520, stagger: 70, low: 0.2, scan: 1400,
-    radius: 22, padding: 20, gap: 14, sheetGap: 6, itemRadius: 12,
+    flare: 14, figDot: 3, figGap: 1, iconDot: 2, iconGap: 1, dial: {size: 32, dots: 26, dot: 2}, logoDot: 1.5, logoRadius: 10.5, cardRadius: 8, cellGap: 4, divider: 3, reveal: 520, stagger: 70, low: 0.2, scan: 1400,
+    radius: 14, padding: 16, gap: 14, sheetGap: 6, itemRadius: 12,
     tube: {width: 28, height: 78, wall: 1.5, wave: 2.2, waveLength: 7, speed: 2.6, still: 0.6},
     tubeColumn: 62, statWidth: 168, statHeight: 30, detailWidth: 520,
     rim: 0.06,
