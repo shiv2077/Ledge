@@ -36,7 +36,10 @@ export class PowerModule extends Module {
                 if (this.cancellable.is_cancelled()) return;
                 if (!proxy?.get_name_owner()) {
                     if (index + 1 < BUSES.length) this._connect(index + 1);
-                    else this._fail('power-profiles-daemon is not running.');
+                    else {
+                        this._fail('power-profiles-daemon is not running.');
+                        this._watch();
+                    }
                     return;
                 }
                 this._proxy = proxy;
@@ -44,6 +47,23 @@ export class PowerModule extends Module {
                 this._ownerSignal = proxy.connect('notify::g-name-owner', () => this._sync());
                 this._sync();
             });
+    }
+
+    // The daemon can start after Ledge (at login, or when restarted): watch
+    // both names and connect once either appears.
+    _watch() {
+        if (this._watches?.length) return;
+        this._watches = BUSES.map(([name]) => Gio.bus_watch_name(Gio.BusType.SYSTEM, name, Gio.BusNameWatcherFlags.NONE,
+            () => {
+                if (this.cancellable.is_cancelled() || this._proxy) return;
+                this._unwatch();
+                this._connect(0);
+            }, null));
+    }
+
+    _unwatch() {
+        for (const id of this._watches ?? []) Gio.bus_unwatch_name(id);
+        this._watches = [];
     }
 
     _fail(message) {
@@ -108,6 +128,7 @@ export class PowerModule extends Module {
         if (this._ownerSignal) this._proxy.disconnect(this._ownerSignal);
         this._propertiesSignal = this._ownerSignal = 0;
         this._proxy = null;
+        this._unwatch();
         super.stop();
     }
 }
