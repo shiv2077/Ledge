@@ -11,7 +11,8 @@ export default class LedgePreferences extends ExtensionPreferences {
     fillPreferencesWindow(window) {
         const settings = this.getSettings();
         window._settings = settings;
-        const page = new Adw.PreferencesPage({title: 'Ledge', icon_name: 'utilities-system-monitor-symbolic'});
+        const page = new Adw.PreferencesPage({title: 'Ledge', icon_name: 'utilities-system-monitor-symbolic',
+            description: 'Super+Shift+L opens Ledge; Escape closes it. Switched-off modules do no work and take no space.'});
         window.add(page);
 
         const group = (title, description = null) => {
@@ -36,7 +37,6 @@ export default class LedgePreferences extends ExtensionPreferences {
 
         this._appearance(page, settings, group);
 
-        const placement = group('Where Ledge lives', 'Super+Shift+L opens Ledge; Escape closes it. Switched-off modules do no work and take no space.');
         // A choice row: `values` are stored in `key`, `labels` are shown.
         const addChoice = (g, key, title, values, labels, subtitle = null) => {
             const row = new Adw.ComboRow({title, subtitle, model: Gtk.StringList.new(labels),
@@ -45,25 +45,6 @@ export default class LedgePreferences extends ExtensionPreferences {
             g.add(row);
             return row;
         };
-        addChoice(placement, 'placement', 'Place', ['shelf', 'panel', 'edge'], ['Top bar lens', 'Top bar chips', 'Screen edge']);
-        const panelRows = [
-            addChoice(placement, 'panel-box', 'Top bar section', ['left', 'center', 'right'], ['Left', 'Centre', 'Right']),
-            addSpin(placement, 'panel-position', 'Position in section', '−1 places it right after the clock in the centre, or last in other sections.', -1, 64, 1),
-            addSwitch(placement, 'panel-open-on-hover', 'Open on hover', 'Otherwise, click a chip to open its deck.'),
-        ];
-        const edgeRows = [
-            addChoice(placement, 'edge', 'Screen edge', ['top', 'right', 'bottom', 'left'], ['Top', 'Right', 'Bottom', 'Left']),
-            addSpin(placement, 'monitor', 'Monitor', '−1 follows the primary monitor; 0 is the first monitor.', -1, 32, 1),
-            addSwitch(placement, 'always-show', 'Always unfolded', 'Otherwise, rest the pointer on the tick at the screen edge to unfold the rail.'),
-        ];
-        // Only the options for the chosen place are shown.
-        const syncPlacement = () => {
-            const place = settings.get_string('placement');
-            for (const row of panelRows) row.visible = place === 'panel';
-            for (const row of edgeRows) row.visible = place === 'edge';
-        };
-        settings.connect('changed::placement', syncPlacement);
-        syncPlacement();
 
         const usage = group('Coding usage', 'Uses existing tool sign-ins. Turning a source off stops reads and removes its cached reading.');
         addSwitch(usage, 'claude', 'Claude Code', 'Reads the local Claude OAuth credential; run Claude to refresh an expired sign-in.');
@@ -85,7 +66,7 @@ export default class LedgePreferences extends ExtensionPreferences {
         const alerts = group('Alerts', 'When a coding session finishes or needs you. Do Not Disturb silences both.');
         addSwitch(alerts, 'alert-sounds', 'Sounds', 'Play a sound when a session finishes or needs you.');
         addSwitch(alerts, 'limit-notifications', 'Limit notifications', 'Notify at 80 % and 100 % of a usage limit.');
-        addSpin(alerts, 'peek-seconds', 'Peek', 'Seconds the edge rail unfolds to show the session; 0 turns it off.', 0, 30, 1);
+        addSpin(alerts, 'peek-seconds', 'Peek', 'Seconds Ledge opens to show the session; 0 turns it off.', 0, 30, 1);
         const SOUNDS = ['complete', 'message-new-instant', 'bell', 'dialog-information', ''];
         const SOUND_NAMES = ['Complete', 'Message', 'Bell', 'Information', 'None'];
         for (const [key, title] of [['sound-finished', 'Finished sound'], ['sound-waiting', 'Waiting sound']]) {
