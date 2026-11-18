@@ -85,7 +85,7 @@ export default class LedgePreferences extends ExtensionPreferences {
         const agents = group('Agents', 'Every coding agent at a glance. Super+Shift+N jumps to the one that has waited longest.');
         addSwitch(agents, 'agents', 'Agents', 'Shows working, waiting and idle agents, grouped by worktree.');
         addSwitch(agents, 'agents-status', 'Hook status files', 'Exact states from Claude Code hooks or any script using tools/ledge_agent.py.');
-        addSwitch(agents, 'agents-herdr', 'Herdr', 'Agents in Herdr panes, read with herdr api snapshot when Herdr is running.');
+        addSwitch(agents, 'agents-workspace', 'Multi-agent workspace', 'Agents in the panes of a multi-agent terminal workspace, read from its snapshot while it runs.');
         addSwitch(agents, 'agents-claude', 'Claude Code sessions', 'States guessed from session files when no hook reports them.');
         addSwitch(agents, 'agents-codex', 'Codex sessions', 'States guessed from Codex session files.');
         addSwitch(agents, 'agents-processes', 'Running agent tools', 'Agent command-line tools found among your processes; shown as running only.');

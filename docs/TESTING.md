@@ -8,7 +8,6 @@
 | `make smoke` | A real headless GNOME Shell 50 with demo data. Screenshots and the shell log land in `.smoke/` |
 | `make links` | Relative links in the README and docs point at files that exist |
 | `make diagrams` | Regenerates `docs/diagrams` from the code |
-| `make demo-assets` | Runs smoke, then builds the README images with ffmpeg |
 
 `make smoke` and the GJS helper test run in a clean environment (`CLEAN_ENV` in the Makefile) because the VS Code snap injects libraries and an old schema path. Run any ad hoc `gjs` or `gnome-shell` the same way.
 

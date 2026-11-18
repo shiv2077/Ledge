@@ -28,7 +28,7 @@ SOURCE_PATTERNS = [
     (r"'nvidia-smi'", lambda m: 'nvidia-smi'),
     (r"PowerProfiles|net\.hadess|UPower", lambda m: 'power-profiles-daemon (D-Bus)'),
     (r"FileMonitor|monitor_directory", lambda m: '~/.local/share/ledge/runs'),
-    (r"lib/agents/([a-z]+)\.js", lambda m: {'status': 'hook status files', 'herdr': 'herdr api snapshot',
+    (r"lib/agents/([a-z]+)\.js", lambda m: {'status': 'hook status files', 'workspace': 'workspace snapshot',
         'sessions': 'Claude / Codex sessions', 'proc': '/proc agent scan'}.get(m.group(1), m.group(1))),
     (r"todos\.json", lambda m: '~/.local/share/ledge/todos.json'),
 ]
@@ -225,13 +225,13 @@ def agents() -> Scene:
     """Where agents come from, how they are merged, and where they show."""
     scene = Scene()
     hooks = scene.box(0, 0, 'Claude Code hooks', 'source')
-    herdr = scene.box(0, 2, 'Herdr panes', 'source')
+    workspace = scene.box(0, 2, 'multi-agent workspace panes', 'source')
     sessions = scene.box(0, 3, 'Claude / Codex session files', 'source')
     procs = scene.box(0, 4, 'running agent CLIs', 'source')
     writer = scene.box(1, 0, 'tools/ledge_agent.py', 'place')
     files = scene.box(1, 1, '~/.local/share/ledge/agents', 'host')
     status = scene.box(2, 1, 'lib/agents/status.js', 'module')
-    herdr_js = scene.box(2, 2, 'lib/agents/herdr.js', 'module')
+    workspace_js = scene.box(2, 2, 'lib/agents/workspace.js', 'module')
     sessions_js = scene.box(2, 3, 'lib/agents/sessions.js', 'module')
     proc_js = scene.box(2, 4, 'lib/agents/proc.js', 'module')
     merge = scene.box(3, 2, 'mergeAgents (by pid)', 'place')
@@ -240,8 +240,8 @@ def agents() -> Scene:
     shelf = scene.box(5, 1, 'strip: dot constellation', 'place')
     card = scene.box(5, 2, 'card: waiting first, by tree', 'place')
     jump = scene.box(5, 3, 'Super+Shift+N: raise', 'place')
-    for a, b in [(hooks, writer), (writer, files), (files, status), (herdr, herdr_js), (sessions, sessions_js),
-                 (procs, proc_js), (status, merge), (herdr_js, merge), (sessions_js, merge), (proc_js, merge),
+    for a, b in [(hooks, writer), (writer, files), (files, status), (workspace, workspace_js), (sessions, sessions_js),
+                 (procs, proc_js), (status, merge), (workspace_js, merge), (sessions_js, merge), (proc_js, merge),
                  (merge, module), (trees, module), (module, shelf), (module, card), (module, jump)]:
         scene.arrow(a, b)
     return scene

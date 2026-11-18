@@ -35,7 +35,7 @@
     <key name="lmstudio-logs" type="b"><default>true</default><summary>Count requests in LM Studio server logs</summary></key>
     <key name="agents" type="b"><default>true</default><summary>Show coding agents at a glance</summary></key>
     <key name="agents-status" type="b"><default>true</default><summary>Read agent status files written by hooks and scripts</summary></key>
-    <key name="agents-herdr" type="b"><default>true</default><summary>Read agents from Herdr</summary></key>
+    <key name="agents-workspace" type="b"><default>true</default><summary>Read agents from a multi-agent terminal workspace</summary></key>
     <key name="agents-claude" type="b"><default>true</default><summary>Show Claude Code sessions as agents</summary></key>
     <key name="agents-codex" type="b"><default>true</default><summary>Show Codex sessions as agents</summary></key>
     <key name="agents-processes" type="b"><default>true</default><summary>Find agent command-line tools among running processes</summary></key>

@@ -338,8 +338,8 @@ export function formatDuration(seconds) {
 export const AGENT_STATES = ['working', 'waiting', 'idle', 'finished', 'error', 'running'];
 export const WAITING_FOR = ['permission', 'input', 'unknown'];
 // Which source knows an agent's state best: a hook's status file, then
-// Herdr, then the Claude/Codex readers' heuristics, then a bare process.
-export const AGENT_SOURCES = ['status', 'herdr', 'claude', 'codex', 'process'];
+// the multi-agent workspace, then the Claude/Codex readers' heuristics, then a bare process.
+export const AGENT_SOURCES = ['status', 'workspace', 'claude', 'codex', 'process'];
 const AGENT_TEXT = 120;
 const AGENT_PATH = 4096;
 
@@ -361,25 +361,25 @@ export function agentStatus(data, now = Date.now(), ttlMs = 12 * 3600e3) {
     };
 }
 
-// Herdr's `api schema` text: the protocol and schema numbers, or null.
-export function herdrSchema(text) {
+// The workspace's `api schema` text: the protocol and schema numbers, or null.
+export function workspaceSchema(text) {
     const protocol = /protocol:\s*(\d+)/.exec(String(text ?? ''));
     const schema = /schema_version:\s*(\d+)/.exec(String(text ?? ''));
     return protocol && schema ? {protocol: Number(protocol[1]), schema: Number(schema[1])} : null;
 }
 
-const HERDR_STATES = {working: 'working', blocked: 'waiting', idle: 'idle', done: 'finished', unknown: 'running'};
+const WORKSPACE_STATES = {working: 'working', blocked: 'waiting', idle: 'idle', done: 'finished', unknown: 'running'};
 
-// Agents from Herdr's `api snapshot` JSON. Only identity, folder and state
+// Agents from the workspace's `api snapshot` JSON. Only identity, folder and state
 // fields are read; titles and labels are not.
-export function herdrAgents(data, now = Date.now()) {
+export function workspaceAgents(data, now = Date.now()) {
     const agents = data?.result?.snapshot?.agents;
     if (!Array.isArray(agents)) return null;
     return agents.filter(a => a && typeof a.pane_id === 'string').map(a => ({
-        source: 'herdr', id: `herdr:${clean(a.pane_id, AGENT_TEXT)}`, name: '', tool: clean(a.agent ?? '', 32).toLowerCase() || 'agent',
-        state: HERDR_STATES[a.agent_status] ?? 'running', cwd: clean(a.foreground_cwd || a.cwd || '', AGENT_PATH), pid: null,
+        source: 'workspace', id: `pane:${clean(a.pane_id, AGENT_TEXT)}`, name: '', tool: clean(a.agent ?? '', 32).toLowerCase() || 'agent',
+        state: WORKSPACE_STATES[a.agent_status] ?? 'running', cwd: clean(a.foreground_cwd || a.cwd || '', AGENT_PATH), pid: null,
         waitingFor: a.agent_status === 'blocked' ? 'unknown' : null, since: now, exact: true, pane: clean(a.pane_id, AGENT_TEXT),
-        // The agent's own session id (Claude Code's), when Herdr knows it.
+        // The agent's own session id (Claude Code's), when the workspace knows it.
         session: clean(a.agent_session?.value ?? '', AGENT_TEXT) || null,
     }));
 }
@@ -398,7 +398,7 @@ export function agentTool(cmdline, known) {
 // One list of agents from every source. Same pid = same agent. Without a
 // pid on one side, cwd + tool joins only when exactly one candidate fits,
 // so two agents in one tree stay two. Per field: state from the most exact
-// source, the pane from Herdr.
+// source, the pane from the workspace.
 export function mergeAgents(lists) {
     const rank = agent => AGENT_SOURCES.indexOf(agent.source);
     const all = lists.flat().filter(Boolean).sort((a, b) => rank(a) - rank(b));

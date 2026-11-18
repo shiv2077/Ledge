@@ -2,31 +2,33 @@
 
 # Ledge
 
-**A dot-matrix strip for GNOME Shell: your coding limits and every running agent, one glance from the top bar.**
+**Your AI coding limits and every running agent, one glance from the GNOME top bar.**
 
 ![GNOME Shell 50](https://img.shields.io/badge/GNOME%20Shell-50-4A86CF?logo=gnome&logoColor=white)
 ![Ubuntu 26.04](https://img.shields.io/badge/Ubuntu-26.04-E95420?logo=ubuntu&logoColor=white)
 ![Wayland](https://img.shields.io/badge/Wayland-ready-FFBC00)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green)
 
-![Ledge's strip open under the top bar with the Claude Code dropdown](docs/hero.webp)
+![The Ledge strip open under the top bar: Claude and Codex dials, the agent count, power, todos, GitHub and training](docs/screenshots/strip.webp)
 
 </div>
 
-A small lens sits beside the clock. It shows a live trace that moves while an agent works and flashes red when one starts waiting on you. Hover it, and a slim black strip grows out of the top bar:
-- dot dials for Claude Code, Cursor, Codex, Copilot and local models;
-- a constellation of every coding agent you have running;
-- power, todos, GitHub and training runs.
+Ledge is a GNOME Shell extension for people who code with AI agents. A small lens sits beside the clock. Its trace moves while an agent works and flashes red when one starts waiting on you. Hover it, and a slim black strip drops out of the top bar:
+- dot-matrix dials for your Claude Code and Codex limits;
+- a live count of every coding agent you have running;
+- your power profile, todos, GitHub and training runs.
 
-Hover any of them and its detail drops down. Everything is local and asynchronous. Ledge stores no tokens and never reads message text.
+Hover any item and its details drop down below it.
+
+![The lens beside the clock, at rest](docs/screenshots/lens.webp)
 
 ## Contents
 
 - [Highlights](#highlights)
-- [Agents](#agents)
-- [Widgets](#widgets)
+- [Multiple agents at a glance](#multiple-agents-at-a-glance)
+- [Usage limits and spend](#usage-limits-and-spend)
+- [Everything else in the strip](#everything-else-in-the-strip)
 - [Alerts](#alerts)
-- [Appearance](#appearance)
 - [Installation](#installation)
 - [Usage](#usage)
 - [Reporting training runs](#reporting-training-runs)
@@ -39,62 +41,83 @@ Hover any of them and its detail drops down. Everything is local and asynchronou
 
 ## Highlights
 
-- **Every agent at a glance.** One dot per running agent: white while it works, blinking red while it waits on you. Hover for the list, grouped by worktree, with the waiting agents first.
-- **Jump to who needs you.** **Super+Shift+N** raises the agent that has waited longest, and through Herdr it focuses the exact pane.
-- **Collisions.** Two agents working in the same worktree get a red tag.
-- **Limits, pace and spend.** Dials show quota left, the dropdown shows each window's pace, and Claude's dropdown estimates today's and the week's spend per project.
-- **Never blocks the desktop.** Every read, subprocess and request is asynchronous with a timeout.
-- **Local by design.** No telemetry, no stored tokens, no new network hosts.
+- **Multiple agents, one view.** Every Claude Code, Codex or other agent you run shows as a dot: white while it works, blinking red while it waits on you.
+- **Jump to the agent that needs you.** **Super+Shift+N** raises the agent that has waited longest, down to its terminal pane.
+- **Clash warnings.** Two agents working in the same git worktree get a red tag before they step on each other's changes.
+- **Limits, pace and spend.** Each provider's quota is a dial. Its dropdown shows every limit window, whether you are ahead of or under pace, and an estimate of today's and this week's spend per project.
+- **A design of its own.** A dot-matrix display style: white on matte black, with red reserved for what needs your attention.
+- **Local and safe.** No telemetry, no stored tokens, no message text read. Every read is asynchronous, so the desktop never stalls.
 
-## Agents
+## Multiple agents at a glance
 
-![Ledge demo: the strip opens, a dial's dropdown, then the agents card](docs/agents-demo.webp)
+![The agents dropdown: two agents waiting on you listed first, then one group per worktree, with a clash tag where two agents share a tree](docs/screenshots/agents.webp)
 
-| Source | What it gives | Tested by hand (GNOME 50, Nov 2026) |
+Developers now run several agents at once, in separate terminals, panes and worktrees. Ledge keeps them in one view.
+
+In the strip, each running agent is one dot. White means working, blinking red means waiting on you, and dim means idle. The count turns red while anyone is waiting.
+
+Hover the dots for the full list:
+1. **Waiting on you**, first, with the reason (permission or input).
+2. **Then one group per git worktree.** A red **2 active · same tree** tag marks agents working in the same tree.
+3. **Each row** shows the tool, folder and branch, how long it has been in that state, and how Ledge knows the state. Click a row to raise that agent's window or pane.
+
+Ledge collects agents from several sources and shows each agent once:
+
+| Source | What it gives | Tested by hand |
 | --- | --- | --- |
-| **Hook status files** (`~/.local/share/ledge/agents/`) | Exact states from Claude Code hooks or any script: working, waiting (permission or input) and finished | yes |
-| **Claude Code sessions** | Working, waiting and idle, guessed from session files when no hook reports (marked ◦) | yes |
-| **Codex sessions** | Working and idle, guessed from Codex session files (marked ◦) | not yet |
-| **Herdr** | Every agent in your Herdr panes, with exact states and pane focus. Read with `herdr api snapshot` only while Herdr's socket exists | listing yes; pane focus not yet |
-| **Running processes** | Agent command-line tools found in `/proc` (claude, codex, opencode, pi, amp, gemini, aider), shown as *running* only | yes |
+| **Claude Code hooks** | Exact states: working, waiting (permission or input), finished | yes |
+| **Multi-agent terminal workspace** | Agents in workspace panes, with exact states and pane focus | yes |
+| **Claude Code and Codex sessions** | States guessed from session files when no hook reports (marked ◦) | Claude yes, Codex not yet |
+| **Running processes** | Agent command-line tools (claude, codex, opencode, pi, amp, gemini, aider), shown as *running* | yes |
 
-![Agent radar: sources, merge, and where agents show](docs/diagrams/agents.svg)
-
-The same agent seen by several sources shows once. The state comes from the most exact source: a hook, then Herdr, then a session guess, then a bare process. Each source has its own switch under Preferences → Agents.
+![How agents flow from their sources into the strip](docs/diagrams/agents.svg)
 
 **Exact Claude Code states with hooks:**
-1. Run `make agent-tools`. It installs `tools/ledge_agent.py` to `~/.local/share/ledge/tools/`.
-2. Merge [`tools/hooks/claude-code-settings.json`](tools/hooks/claude-code-settings.json) into `~/.claude/settings.json`. Ledge never edits that file itself. **Check** under Preferences → Agents confirms the hooks are in place.
+1. Run `make agent-tools`. It installs the small hook writer, `tools/ledge_agent.py`, to `~/.local/share/ledge/tools/`.
+2. Merge [`tools/hooks/claude-code-settings.json`](tools/hooks/claude-code-settings.json) into `~/.claude/settings.json`. Ledge never edits that file itself.
+3. Under Preferences → Agents, press **Check** to confirm the hooks are in place.
 
-The hook writes the session id, folder, state, the agent's pid and a time. Message text is never stored. Any script can report the same way:
+The hook records only the session id, folder, state, the agent's process id and a time, never message text. Any script or tool can report the same way:
 
 ```sh
 python3 ~/.local/share/ledge/tools/ledge_agent.py --id build-bot --tool mybot --state working --cwd .
 ```
 
-## Widgets
+## Usage limits and spend
 
 <table>
 <tr>
-<td width="50%"><img src="docs/screenshots/usage-claude.webp" alt="Claude Code dropdown with two limit windows, pace, estimated spend and a session"></td>
-<td width="50%"><img src="docs/screenshots/todo.webp" alt="Todo dropdown with an entry and one item"></td>
+<td width="50%"><img src="docs/screenshots/claude.webp" alt="Claude Code dropdown: current session and weekly limits with pace, and spend for today and the last 7 days by project"></td>
+<td width="50%"><img src="docs/screenshots/codex.webp" alt="Codex dropdown: monthly limit with pace and spend"></td>
 </tr>
 <tr>
-<td><b>Coding usage.</b> Claude Code, Cursor and Codex limit windows with resets, pace and live sessions. Click a session to raise its window. Extra sign-ins (<code>~/.claude-work</code>, <code>~/.codex-side</code>) get their own dials.</td>
-<td><b>Todo, power, GitHub, training.</b> Add todos, switch power profiles, see review requests and CI, and follow training runs, each from its own dropdown.</td>
+<td><b>Claude Code.</b> Each limit window as a dotted bar, with its reset time and pace ("17% ahead of pace"). Below that, the estimated spend today and over 7 days, per project, read from your local transcripts at API list prices.</td>
+<td><b>Codex.</b> The same view for Codex limits. A dial turns red when little is left. Extra sign-ins such as <code>~/.claude-work</code> or <code>~/.codex-side</code> get their own dials.</td>
 </tr>
 </table>
 
-| Widget | Strip | Dropdown | Source |
-| --- | --- | --- | --- |
-| Claude Code, Cursor, Codex | Dial of quota left | Windows, resets, pace, spend, sessions | Each tool's existing sign-in and local files |
-| Agents | Dot constellation and count | Waiting first, then by worktree | Hooks, Herdr, sessions, `/proc` |
-| Copilot | Dial of premium requests left | Every quota and its reset | `gh api /copilot_internal/user` (off by default) |
-| Local models | Loaded models | Ollama, LM Studio and llama.cpp details | localhost, `nvidia-smi` |
-| Power | Active profile | Power Saver, Balanced, Performance | power-profiles-daemon over D-Bus |
-| Todo | Open items | Add, complete, delete | `~/.local/share/ledge/todos.json` |
-| GitHub | Review requests | Pull requests and CI | `gh` CLI |
-| Training | Newest run's loss | Recent runs | `~/.local/share/ledge/runs/` |
+## Everything else in the strip
+
+<table>
+<tr>
+<td width="50%"><img src="docs/screenshots/power.webp" alt="Power dropdown with Power saver, Balanced and Performance"></td>
+<td width="50%"><img src="docs/screenshots/todo.webp" alt="Todo dropdown with an entry field"></td>
+</tr>
+<tr>
+<td><b>Power.</b> The active power profile; click another to switch.</td>
+<td><b>Todo.</b> Type and press Enter to add; tick to complete.</td>
+</tr>
+<tr>
+<td><img src="docs/screenshots/github.webp" alt="GitHub dropdown with review requests and your open pull requests"></td>
+<td><img src="docs/screenshots/training.webp" alt="Training dropdown with a finished run, its epoch and loss"></td>
+</tr>
+<tr>
+<td><b>GitHub.</b> Review requests, your open pull requests and CI for repositories you watch, read through the <code>gh</code> CLI.</td>
+<td><b>Training.</b> Live epoch and loss for runs that report with <code>tools/ledge_status.py</code>, plus a notice when one finishes, crashes or stalls.</td>
+</tr>
+</table>
+
+Local models (Ollama, LM Studio, llama.cpp) and the GitHub Copilot quota can be switched on in Preferences.
 
 ## Alerts
 
@@ -188,7 +211,6 @@ Each widget is a module in [`modules/`](modules) with a small interface: one or 
 ```sh
 make test       # Node, Python and GJS tests, schema compile, syntax checks
 make smoke      # a real headless GNOME Shell exercising every widget and theme
-make demo-assets  # README images from the smoke screenshots (ffmpeg)
 make diagrams   # docs/diagrams from the code
 make links      # check links in the docs
 make nested     # a nested GNOME Shell window with this checkout (needs mutter-dev-bin)

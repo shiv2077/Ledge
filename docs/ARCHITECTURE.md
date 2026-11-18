@@ -39,15 +39,15 @@ Fixed chip order: claude, cursor, codex, power, todo, models, github, copilot, t
 
 [`modules/agents.js`](../modules/agents.js) merges agents from adapters in [`lib/agents/`](../lib/agents):
 - **Hook status files.** [`tools/ledge_agent.py`](../tools/ledge_agent.py), run by Claude Code hooks, writes them.
-- **Herdr's `api snapshot`.** It is spawned only while Herdr's socket exists, and only after a protocol check.
+- **A multi-agent terminal workspace's `api snapshot`.** It is run only while the workspace's socket exists, and only after a protocol check.
 - **Claude Code and Codex sessions,** from the usage readers.
 - **A `/proc` scan** for agent command-line tools.
 
 How they combine:
 - **Joining:** agents join by pid. An agent without a pid joins another by folder and tool only when exactly one candidate fits.
-- **State** comes from the most exact source: hook, then Herdr, then a session guess, then a bare process.
+- **State** comes from the most exact source: hook, then the workspace, then a session guess, then a bare process.
 - **Worktree and branch** are read from `.git` and cached, with no git subprocess. Two or more active agents in one worktree are flagged.
-- **Super+Shift+N** raises the agent that has waited longest. Through Herdr it focuses that agent's pane.
+- **Super+Shift+N** raises the agent that has waited longest. Through the workspace it focuses that agent's pane.
 
 ## Readers
 

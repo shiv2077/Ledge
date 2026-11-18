@@ -5,7 +5,7 @@ import {readText} from '../lib/files.js';
 import {raiseSession, windowForPid, children} from '../lib/windows.js';
 import {StatusSource} from '../lib/agents/status.js';
 import {SessionSource} from '../lib/agents/sessions.js';
-import {HerdrSource} from '../lib/agents/herdr.js';
+import {WorkspaceSource, WORKSPACE_CLI} from '../lib/agents/workspace.js';
 import {ProcessSource} from '../lib/agents/proc.js';
 import {mergeAgents, agentCollisions, waitingQueue, gitHeadBranch, gitDirFile, formatDuration, agentTool} from '../model.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -16,12 +16,12 @@ const SHOWN = 12;
 const TOOL_NAMES = {claude: 'Claude Code', codex: 'Codex', opencode: 'OpenCode', pi: 'Pi', amp: 'Amp', gemini: 'Gemini', aider: 'Aider'};
 const STATE_TEXT = {working: 'working', waiting: 'waiting', idle: 'idle', finished: 'done', error: 'error', running: 'running'};
 const WAIT_TEXT = {permission: 'permission', input: 'input', unknown: 'waiting'};
-const SOURCE_TEXT = {status: 'hook', herdr: 'herdr', claude: 'session', codex: 'session', process: 'process'};
+const SOURCE_TEXT = {status: 'hook', workspace: 'workspace', claude: 'session', codex: 'session', process: 'process'};
 
 // Demo agents: two in one tree (a collision), one waiting.
 const minutesAgo = m => Date.now() - m * 60e3;
 const DEMO = () => [
-    {id: 'd1', tool: 'claude', state: 'working', cwd: '/home/demo/ledge', tree: '/home/demo/ledge', branch: 'main', sources: ['herdr'], since: minutesAgo(12), exact: true},
+    {id: 'd1', tool: 'claude', state: 'working', cwd: '/home/demo/ledge', tree: '/home/demo/ledge', branch: 'main', sources: ['workspace'], since: minutesAgo(12), exact: true},
     {id: 'd2', tool: 'claude', state: 'waiting', waitingFor: 'permission', cwd: '/home/demo/ledge', tree: '/home/demo/ledge', branch: 'main', sources: ['status'], since: minutesAgo(3), exact: true},
     {id: 'd3', tool: 'codex', state: 'working', cwd: '/home/demo/site', tree: '/home/demo/site', branch: 'feat/nav', sources: ['codex'], since: minutesAgo(25), exact: false},
     {id: 'd4', tool: 'opencode', state: 'running', cwd: '/home/demo/notes', tree: '/home/demo/notes', branch: 'main', sources: ['process'], since: null, exact: false},
@@ -34,7 +34,7 @@ const exists = (path, cancellable) => new Promise(resolve => {
     });
 });
 
-// Every coding agent at a glance: merged from hook status files, Herdr,
+// Every coding agent at a glance: merged from hook status files, the multi-agent workspace,
 // Claude Code and Codex sessions and a process scan, grouped by worktree.
 export class AgentsModule extends Module {
     static id = 'agents';
@@ -46,7 +46,7 @@ export class AgentsModule extends Module {
         const changed = () => this._refresh();
         this._sources = {
             'agents-status': new StatusSource(changed),
-            'agents-herdr': new HerdrSource(changed),
+            'agents-workspace': new WorkspaceSource(changed),
             'agents-claude': new SessionSource(changed, 'claude'),
             'agents-codex': new SessionSource(changed, 'codex'),
             'agents-processes': new ProcessSource(changed),
@@ -188,10 +188,10 @@ export class AgentsModule extends Module {
     }
 
     async raise(agent) {
-        const herdr = this._sources['agents-herdr'];
-        if (agent.pane && this._running.has('agents-herdr') && await herdr.focus(agent.pane)) {
-            // Then the terminal that shows Herdr.
-            const pid = await this._herdrClient();
+        const workspace = this._sources['agents-workspace'];
+        if (agent.pane && this._running.has('agents-workspace') && await workspace.focus(agent.pane)) {
+            // Then the terminal that shows the workspace.
+            const pid = await this._workspaceClient();
             if (pid) {
                 const window = await windowForPid(pid, this.cancellable);
                 if (window) Main.activateWindow(window);
@@ -203,12 +203,12 @@ export class AgentsModule extends Module {
         return false;
     }
 
-    async _herdrClient() {
+    async _workspaceClient() {
         for (const info of await children(Gio.File.new_for_path('/proc'), this.cancellable)) {
             const pid = Number(info.get_name());
             if (!Number.isInteger(pid)) continue;
             const {text} = await readText(`/proc/${pid}/cmdline`, this.cancellable);
-            if (agentTool(text, ['herdr'])) return pid;
+            if (agentTool(text, [WORKSPACE_CLI])) return pid;
         }
         return null;
     }
