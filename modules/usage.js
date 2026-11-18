@@ -6,7 +6,7 @@ import {run} from '../lib/subprocess.js';
 import {sessionEvents, limitAlerts} from '../lib/alerts.js';
 import {raiseSession} from '../lib/windows.js';
 import {PROVIDERS, NAMES, BADGES, percentage, resetText, normalize, usageSummary, remainingPercent,
-    accountKey, accountName, paceDeficit, paceText, headlineWindow, money} from '../model.js';
+    accountKey, accountName, paceDeficit, paceText, headlineWindow, money, resetShort} from '../model.js';
 import {PROVIDER_COLORS} from '../design.js';
 
 const MAX_OUTPUT = 131072;
@@ -329,6 +329,7 @@ class UsageModule extends Module {
             light: sessions.some(s => s.state === 'waiting') ? 'waiting' : sessions.some(s => s.state === 'busy') ? 'working' : 'off',
             updatedAt: Number.isFinite(updated) ? updated : null,
             usage: {remaining, deficit: window ? paceDeficit(window) : null},
+            caption: window?.resetsAt ? resetShort(window.resetsAt) : '',
             accessibleName: `${NAMES[this.id]}${account}: ${percentage(remaining)} left${stale ? ', reading unavailable, stale or spent' : ''}`,
         };
     }

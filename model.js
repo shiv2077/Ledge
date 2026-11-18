@@ -72,6 +72,16 @@ const STATUSES = ['ok', 'stale', 'needsAuth', 'error', 'unavailable'];
 
 // One reading per enabled provider's default sign-in, then its extra
 // accounts by slug (`account` is null for the default).
+// A reset time in a few characters: 45m, 2h 14m, 3d 4h; empty when unknown.
+export function resetShort(value, now = Date.now()) {
+    const minutes = Math.ceil((Date.parse(value) - now) / 60000);
+    if (!Number.isFinite(minutes)) return '';
+    if (minutes <= 0) return 'now';
+    if (minutes < 60) return `${minutes}m`;
+    if (minutes < DAY_MINUTES) return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+    return `${Math.floor(minutes / DAY_MINUTES)}d ${Math.floor(minutes % DAY_MINUTES / 60)}h`;
+}
+
 export function normalize(data, enabled) {
     if (data?.version !== 1 || !Array.isArray(data.providers))
         throw new Error('Invalid reader response');

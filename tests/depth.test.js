@@ -60,3 +60,12 @@ test('money', () => {
     assert.equal(money(123.4), '$123');
     assert.equal(money(null), '—');
 });
+
+test('short reset text', async () => {
+    const {resetShort} = await import('../model.js');
+    const now = Date.parse('2030-01-01T00:00:00Z');
+    assert.equal(resetShort('2030-01-01T00:45:00Z', now), '45m');
+    assert.equal(resetShort('2030-01-01T02:14:00Z', now), '2h 14m');
+    assert.equal(resetShort('2030-01-04T04:00:00Z', now), '3d 4h');
+    assert.equal(resetShort(null, now), '');
+});

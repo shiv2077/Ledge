@@ -827,11 +827,16 @@ export default class Smoke extends Ledge {
         assert(Math.abs(sy - panelBottom) <= 1, 'The sheet grows straight out of the top bar');
         assert(sx >= 0 && sx + S.sheet.width <= global.stage.width, 'The sheet stays on the monitor');
         assert(!S.sheet.get_effect('ledge-blur'), 'The sheet is matte, without blur');
-        const area = () => ({x: S.sheet.x - PAD, y: 0, width: S.sheet.width + 2 * PAD, height: S.sheet.y + S.sheet.height + PAD});
+        const area = () => ({x: S.sheet.x - PAD, y: 0, width: S.sheet.width + 2 * PAD,
+            height: Math.max(S.sheet.y + S.sheet.height, S.drop.visible ? S.drop.y + S.drop.height : 0) + PAD});
         await this.capture('shelf-open', area());
-        S._select('claude');
-        await delay(600);
-        assert(S.deck.visible && S.deck.key === 'claude' && S._detail.visible, 'Selecting a gauge shows its detail in the sheet');
+        const claude = S._items.get('claude').actor;
+        move(...(() => { const [x, y] = claude.get_transformed_position(); return [x + claude.width / 2, y + claude.height / 2]; })());
+        await delay(SHELF.intent + 600);
+        assert(S.deck.visible && S.deck.key === 'claude' && S.drop.visible, 'Hovering a dial drops its detail down');
+        const [dx, dy] = S.drop.get_transformed_position();
+        assert(dy >= S.sheet.y + S.sheet.height && Math.abs(dx + S.drop.width / 2 - (claude.get_transformed_position()[0] + claude.width / 2)) <= 2 || dx <= 6,
+            'The dropdown hangs under its dial');
         await this.capture('shelf-claude', area());
         S._select('todo');
         await delay(600);
@@ -839,7 +844,7 @@ export default class Smoke extends Ledge {
         await this.capture('shelf-todo', area());
         S._select('todo');
         await delay(200);
-        assert(!S._detail.visible, 'Selecting the open source again folds its detail');
+        assert(!S.drop.visible, 'Clicking the open source again folds its dropdown');
         move(global.stage.width - 10, global.stage.height - 10);
         await delay(SHELF.grace + 400);
         assert(!S._open && !S.sheet.visible, 'Leaving the shelf closes it');

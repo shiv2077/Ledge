@@ -270,6 +270,69 @@ export function drawSheet(cr, w, h, radius, fill, rim) {
     cr.stroke();
 }
 
+// A rounded card with a faint rim, for the shelf's dropdown.
+export function drawCard(cr, w, h, radius, fill, rim) {
+    const [r, g, b] = rgba(fill);
+    roundedPath(cr, 0.5, 0.5, w - 1, h - 1, radius);
+    cr.setSourceRGBA(r, g, b, 1);
+    cr.fillPreserve();
+    cr.setSourceRGBA(1, 1, 1, rim);
+    cr.setLineWidth(1);
+    cr.stroke();
+}
+
+// The shelf strip: it leaves the bar with outward curves at the top
+// corners, runs straight down and ends in rounded lower corners.
+export function drawStrip(cr, w, h, flare, radius, fill, rim) {
+    const [r, g, b] = rgba(fill);
+    const f = Math.min(flare, w / 4, h / 2);
+    const rr = Math.min(radius, (w - 2 * f) / 2, h - f);
+    cr.moveTo(0, 0);
+    cr.arc(0, f, f, -Math.PI / 2, 0);
+    cr.lineTo(f, h - rr);
+    cr.arcNegative(f + rr, h - rr, rr, Math.PI, Math.PI / 2);
+    cr.lineTo(w - f - rr, h);
+    cr.arcNegative(w - f - rr, h - rr, rr, Math.PI / 2, 0);
+    cr.lineTo(w - f, f);
+    cr.arc(w, f, f, Math.PI, 1.5 * Math.PI);
+    cr.closePath();
+    cr.setSourceRGBA(r, g, b, 1);
+    cr.fillPreserve();
+    cr.setSourceRGBA(1, 1, 1, rim);
+    cr.setLineWidth(1);
+    cr.stroke();
+}
+
+// A dial of `count` dots around (cx, cy), lit clockwise from the top for
+// `fraction`; `reveal` switches them on in turn; `orbit` (0..1 or null) is
+// a moving dot in `pulse`.
+export function drawDial(cr, cx, cy, radius, count, dot, fraction, lit, off, reveal = 1, orbit = null, pulse = lit) {
+    const on = typeof fraction === 'number' ? Math.round(Math.max(0, Math.min(1, fraction)) * count) : 0;
+    const shown = Math.min(on, Math.ceil(on * reveal));
+    const at = orbit === null ? -1 : Math.floor(orbit * count) % count;
+    for (let i = 0; i < count; i++) {
+        const angle = -Math.PI / 2 + i / count * 2 * Math.PI;
+        const [r, g, b] = rgba(i === at ? pulse : i < shown ? lit : off);
+        const size = i === at ? dot * 1.4 : dot;
+        cr.arc(cx + radius * Math.cos(angle), cy + radius * Math.sin(angle), size / 2, 0, 2 * Math.PI);
+        cr.setSourceRGBA(r, g, b, 1);
+        cr.fill();
+    }
+}
+
+// A 7 x 7 dot icon (rows of seven bits) with its top left at (x, y).
+export function drawDotIcon(cr, rows, x, y, dot, gap, color) {
+    const [r, g, b] = rgba(color);
+    rows.forEach((bits, row) => {
+        for (let c = 0; c < 7; c++) {
+            if (!(bits & (1 << (6 - c)))) continue;
+            cr.rectangle(x + c * (dot + gap), y + row * (dot + gap), dot, dot);
+        }
+    });
+    cr.setSourceRGBA(r, g, b, 1);
+    cr.fill();
+}
+
 // The lens trace: a short line in `color`, moving when `amplitude` > 0.
 export function drawTrace(cr, w, h, phase, amplitude, color) {
     const [r, g, b] = rgba(color);

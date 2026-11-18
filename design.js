@@ -54,6 +54,19 @@ export const DOT_FONT = {
     '-': [0, 0, 0, 31, 0, 0, 0], '∞': [0, 0, 10, 21, 10, 0, 0], ' ': [0, 0, 0, 0, 0, 0, 0],
 };
 export const DOT_ROWS = 7;
+
+// 7 x 7 dot icons for the shelf, drawn for Ledge: rows of seven bits.
+export const DOT_ICONS = {
+    claude: [8, 73, 42, 28, 42, 73, 8],          // a spark
+    codex: [0, 64, 32, 16, 32, 71, 0],           // a prompt
+    cursor: [64, 96, 112, 120, 124, 104, 4],     // a pointer
+    copilot: [0, 62, 107, 107, 62, 34, 0],       // a visor
+    models: [42, 127, 34, 99, 34, 127, 42],      // a chip
+    power: [6, 12, 24, 62, 12, 24, 48],          // a bolt
+    todo: [127, 65, 67, 101, 89, 65, 127],       // a ticked box
+    github: [34, 34, 36, 56, 32, 32, 32],        // a branch
+    training: [1, 3, 7, 15, 47, 127, 0],         // a rising curve
+};
 export const DOT_COLUMNS = 5;
 
 // The dots of `text` as [column, row] pairs, with one blank column between
@@ -77,7 +90,8 @@ export const dotOrder = (column, row) => ((column * 7 + row * 13) % 17) / 17;
 
 export const SHELF = {
     lensWidth: 40, lensTrace: 14, lensRadius: 9, lensMargin: 4,
-    dot: 4, dotGap: 2, barDots: 12, barDot: 4, barGap: 3, gaugeWidth: 96, reveal: 520, stagger: 70, low: 0.2, scan: 1400,
+    dot: 4, dotGap: 2, barDots: 12, barDot: 4, barGap: 3, gaugeWidth: 96,
+    flare: 16, figDot: 3, figGap: 1, iconDot: 2, iconGap: 1, dial: {size: 38, dots: 28, dot: 2.5}, cellGap: 8, divider: 3, reveal: 520, stagger: 70, low: 0.2, scan: 1400,
     radius: 22, padding: 20, gap: 14, sheetGap: 6, itemRadius: 12,
     tube: {width: 28, height: 78, wall: 1.5, wave: 2.2, waveLength: 7, speed: 2.6, still: 0.6},
     tubeColumn: 62, statWidth: 168, statHeight: 30, detailWidth: 520,
