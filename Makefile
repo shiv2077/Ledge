@@ -1,7 +1,7 @@
 # Snap-packaged terminals (VS Code) inject libraries and schemas that break gjs
 # and gnome-shell, so those targets run in a clean environment.
 CLEAN_ENV = env -i HOME=$(HOME) PATH=/usr/bin:/bin XDG_RUNTIME_DIR=$(XDG_RUNTIME_DIR) LANG=C.UTF-8
-.PHONY: test package install smoke dev-link reload nested demo-assets diagrams links
+.PHONY: test package install smoke dev-link reload nested demo-assets diagrams links agent-tools
 test:
 	node --test tests/*.test.js
 	python3 -m unittest discover -s tests -p 'test_*.py' -v
@@ -16,6 +16,9 @@ smoke:
 	$(CLEAN_ENV) python3 scripts/smoke.py
 demo-assets: smoke
 	python3 scripts/export_demo_assets.py
+# Companion tools for agents (not part of the extension package).
+agent-tools:
+	install -D -m 0755 tools/ledge_agent.py $(HOME)/.local/share/ledge/tools/ledge_agent.py
 diagrams:
 	python3 scripts/diagrams.py
 links:

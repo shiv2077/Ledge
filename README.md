@@ -2,26 +2,30 @@
 
 # Ledge
 
-**An instrument strip for GNOME Shell: the numbers you check all day, in the top bar or on a screen edge.**
+**A dot-matrix strip for GNOME Shell: your coding limits and every running agent, one glance from the top bar.**
 
 ![GNOME Shell 50](https://img.shields.io/badge/GNOME%20Shell-50-4A86CF?logo=gnome&logoColor=white)
 ![Ubuntu 26.04](https://img.shields.io/badge/Ubuntu-26.04-E95420?logo=ubuntu&logoColor=white)
 ![Wayland](https://img.shields.io/badge/Wayland-ready-FFBC00)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green)
 
-![Ledge in the top bar with the Claude Code deck open](docs/hero.webp)
+![Ledge's strip open under the top bar with the Claude Code dropdown](docs/hero.webp)
 
 </div>
 
-Ledge puts a row of chips in the GNOME top bar, right after the clock. Each chip is one source: coding assistant limits, power profile, todos, local models, GitHub, Copilot and training runs. A chip shows a monogram, a monospaced readout, a small segmented meter and a status light. Click it and its deck drops down under the bar with the detail. Prefer the screen edge? Ledge can live there as a thin tick that unfolds into a rail.
+A small lens sits beside the clock. It shows a live trace that moves while an agent works and flashes red when one starts waiting on you. Hover it, and a slim black strip grows out of the top bar:
+- dot dials for Claude Code, Cursor, Codex, Copilot and local models;
+- a constellation of every coding agent you have running;
+- power, todos, GitHub and training runs.
 
-Everything runs locally and asynchronously. Ledge stores no tokens.
+Hover any of them and its detail drops down. Everything is local and asynchronous. Ledge stores no tokens and never reads message text.
 
 ## Contents
 
 - [Highlights](#highlights)
+- [Agents](#agents)
 - [Widgets](#widgets)
-- [Top bar and screen edge](#top-bar-and-screen-edge)
+- [Placements](#placements)
 - [Alerts](#alerts)
 - [Appearance](#appearance)
 - [Installation](#installation)
@@ -36,67 +40,71 @@ Everything runs locally and asynchronously. Ledge stores no tokens.
 
 ## Highlights
 
-- **Readable at a glance.** Segmented meters, status lights and tabular numerals. Readouts never change width as values move.
-- **Top bar or edge.** The strip sits in the top bar by default and folds down to readout-free chips, then to one summary chip, when the bar is crowded. On a screen edge it rests as a 4 px tick.
-- **Knows when a session needs you.** A finished or waiting coding session plays a sound and, on the edge rail, briefly unfolds it. Usage limits notify at 80 % and 100 %.
-- **Pace and spend.** Each limit window says whether you are ahead of or under an even pace. An estimate of the week's spend, per project, comes from your local transcripts.
-- **Never blocks the desktop.** Every file read, subprocess and HTTP request is asynchronous with a timeout. A missing source shows a clear state in its deck.
-- **Keyboard first.** Super+Shift+L opens Ledge, Tab walks every control, Escape closes.
-- **Local by design.** No telemetry and no stored tokens. GitHub goes through the `gh` CLI; model servers are reached on localhost only.
+- **Every agent at a glance.** One dot per running agent: white while it works, blinking red while it waits on you. Hover for the list, grouped by worktree, with the waiting agents first.
+- **Jump to who needs you.** **Super+Shift+N** raises the agent that has waited longest, and through Herdr it focuses the exact pane.
+- **Collisions.** Two agents working in the same worktree get a red tag.
+- **Limits, pace and spend.** Dials show quota left, the dropdown shows each window's pace, and Claude's dropdown estimates today's and the week's spend per project.
+- **Never blocks the desktop.** Every read, subprocess and request is asynchronous with a timeout.
+- **Local by design.** No telemetry, no stored tokens, no new network hosts.
+
+## Agents
+
+![Ledge demo: the strip opens, a dial's dropdown, then the agents card](docs/agents-demo.webp)
+
+| Source | What it gives | Tested by hand |
+| --- | --- | --- |
+| **Hook status files** (`~/.local/share/ledge/agents/`) | Exact states from Claude Code hooks or any script: working, waiting (permission or input) and finished | pending |
+| **Claude Code sessions** | Working, waiting and idle, guessed from session files when no hook reports (marked ◦) | pending |
+| **Codex sessions** | Working and idle, guessed from Codex session files (marked ◦) | pending |
+| **Herdr** | Every agent in your Herdr panes, with exact states and pane focus. Read with `herdr api snapshot` only while Herdr's socket exists | pending |
+| **Running processes** | Agent command-line tools found in `/proc` (claude, codex, opencode, pi, amp, gemini, aider), shown as *running* only | pending |
+
+The same agent seen by several sources shows once. The state comes from the most exact source: a hook, then Herdr, then a session guess, then a bare process. Each source has its own switch under Preferences → Agents.
+
+**Exact Claude Code states with hooks:**
+1. Run `make agent-tools`. It installs `tools/ledge_agent.py` to `~/.local/share/ledge/tools/`.
+2. Merge [`tools/hooks/claude-code-settings.json`](tools/hooks/claude-code-settings.json) into `~/.claude/settings.json`. Ledge never edits that file itself. **Check** under Preferences → Agents confirms the hooks are in place.
+
+The hook writes the session id, folder, state, the agent's pid and a time. Message text is never stored. Any script can report the same way:
+
+```sh
+python3 ~/.local/share/ledge/tools/ledge_agent.py --id build-bot --tool mybot --state working --cwd .
+```
 
 ## Widgets
 
 <table>
 <tr>
-<td width="50%"><img src="docs/screenshots/usage-claude.webp" alt="Claude Code deck with two limit windows, pace captions, an estimated spend section and one session"></td>
-<td width="50%"><img src="docs/screenshots/models.webp" alt="Local models deck with GPU memory, an Ollama model, LM Studio request counts and llama.cpp slots and speeds"></td>
+<td width="50%"><img src="docs/screenshots/usage-claude.webp" alt="Claude Code dropdown with two limit windows, pace, estimated spend and a session"></td>
+<td width="50%"><img src="docs/screenshots/todo.webp" alt="Todo dropdown with an entry and one item"></td>
 </tr>
 <tr>
-<td><b>Coding usage.</b> Claude Code, Cursor and Codex limit windows with resets, pace and live sessions. Click a session to raise its terminal or editor window. Extra sign-ins (<code>~/.claude-work</code>, <code>~/.codex-side</code>) get their own chips.</td>
-<td><b>Local models.</b> Ollama models with size, VRAM, context and quantisation, a speed test, LM Studio's loaded models and request counts, and a llama.cpp server's slots and token rates.</td>
-</tr>
-<tr>
-<td><img src="docs/screenshots/copilot.webp" alt="Copilot deck under the top bar showing premium requests left and unlimited chat"></td>
-<td><img src="docs/screenshots/github.webp" alt="GitHub deck with a review request, an open pull request and a passing CI run"></td>
-</tr>
-<tr>
-<td><b>Copilot.</b> Premium requests left this month and the reset date, read with <code>gh api</code>. Off by default.</td>
-<td><b>GitHub.</b> Review requests, your open pull requests and the latest CI run for repositories you watch. The light turns red when a run fails.</td>
-</tr>
-<tr>
-<td><img src="docs/screenshots/power.webp" alt="Power deck listing Power Saver, Balanced and Performance"></td>
-<td><img src="docs/screenshots/training.webp" alt="Training deck showing a run with epoch, loss and ETA"></td>
-</tr>
-<tr>
-<td><b>Power.</b> The current power-profiles-daemon profile; click one to switch.</td>
-<td><b>Training.</b> Live epoch progress with the loss as the readout, and notifications when a run finishes, crashes or stalls.</td>
+<td><b>Coding usage.</b> Claude Code, Cursor and Codex limit windows with resets, pace and live sessions. Click a session to raise its window. Extra sign-ins (<code>~/.claude-work</code>, <code>~/.codex-side</code>) get their own dials.</td>
+<td><b>Todo, power, GitHub, training.</b> Add todos, switch power profiles, see review requests and CI, and follow training runs, each from its own dropdown.</td>
 </tr>
 </table>
 
-| Widget | Chip | Deck | Source |
+| Widget | Strip | Dropdown | Source |
 | --- | --- | --- | --- |
-| Claude Code, Cursor, Codex | Quota left in the chosen window | Windows, resets, pace, spend, sessions | Each tool's existing sign-in and local transcripts |
+| Claude Code, Cursor, Codex | Dial of quota left | Windows, resets, pace, spend, sessions | Each tool's existing sign-in and local files |
+| Agents | Dot constellation and count | Waiting first, then by worktree | Hooks, Herdr, sessions, `/proc` |
+| Copilot | Dial of premium requests left | Every quota and its reset | `gh api /copilot_internal/user` (off by default) |
+| Local models | Loaded models | Ollama, LM Studio and llama.cpp details | localhost, `nvidia-smi` |
 | Power | Active profile | Power Saver, Balanced, Performance | power-profiles-daemon over D-Bus |
 | Todo | Open items | Add, complete, delete | `~/.local/share/ledge/todos.json` |
-| Local models | Loaded models; meter is GPU memory in use | Models, request counts, slots, speeds | Ollama, LM Studio and llama.cpp on localhost, `nvidia-smi` |
-| GitHub | Review requests; red on failing CI | Pull requests and CI, click to open | `gh` CLI |
-| Copilot | Premium requests left | Every quota and its reset | `gh api /copilot_internal/user` |
-| Training | Newest run's progress and loss | Recent runs with epoch, loss, ETA and state | `~/.local/share/ledge/runs/` |
+| GitHub | Review requests | Pull requests and CI | `gh` CLI |
+| Training | Newest run's loss | Recent runs | `~/.local/share/ledge/runs/` |
 
-## Top bar and screen edge
+## Placements
+
+The strip under the top bar is the default. Preferences → Where Ledge lives also offers chips in the top bar, or a rail on any screen edge.
 
 <table>
 <tr>
-<td width="50%"><img src="docs/screenshots/summary.webp" alt="One summary chip in a narrow top bar with its deck and a module switcher row"></td>
+<td width="50%"><img src="docs/screenshots/shelf-rest.webp" alt="The lens beside the clock at rest"></td>
 <td width="50%"><img src="docs/rail-unfold.webp" alt="The edge tick unfolding into a rail and opening a deck"></td>
 </tr>
-<tr>
-<td><b>Top bar.</b> Click a chip to open its deck; hover another chip to switch. A crowded bar drops readouts, then shows one summary chip whose deck has a switcher.</td>
-<td><b>Screen edge.</b> Rest the pointer on the tick to unfold the rail. Hover a chip for its deck. Right-click a chip, or choose <b>pin</b>, to keep its deck open.</td>
-</tr>
 </table>
-
-Choose the place under **Where Ledge lives** in preferences, or run `gsettings set org.gnome.shell.extensions.ledge placement edge`. Switching takes effect at once.
 
 ## Alerts
 
@@ -146,7 +154,8 @@ gnome-extensions prefs ledge@shiv2077
 
 | Action | How |
 | --- | --- |
-| Open a deck | Click a chip in the top bar, or hover one on the edge rail |
+| Open the strip | Hover or click the lens beside the clock; hover a dial for its dropdown |
+| Next waiting agent | **Super+Shift+N** |
 | Keyboard | **Super+Shift+L** opens Ledge, **Tab** walks controls, **Escape** closes |
 | Keep a deck open (edge) | Right-click its chip, or choose **pin** in the deck |
 | Raise a session's window | Click the session row in a usage deck |
@@ -182,7 +191,7 @@ There is no telemetry. Ledge stores no tokens and never logs credentials or mess
 
 ## How it works
 
-Each widget is a module in [`modules/`](modules) with a small interface: one or more cells for the strip, a deck, and `start()` / `stop()`. The host in [`extension.js`](extension.js) hands the cells to the placement, either [`lib/panel.js`](lib/panel.js) or [`lib/rail.js`](lib/rail.js), which draw them with [`lib/strip.js`](lib/strip.js) and [`lib/deck.js`](lib/deck.js). Readers in [`reader/`](reader) run as short Python subprocesses. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [DECISIONS.md](DECISIONS.md) and [docs/TESTING.md](docs/TESTING.md).
+Each widget is a module in [`modules/`](modules) with a small interface: one or more cells for the strip, a deck, and `start()` / `stop()`. The host in [`extension.js`](extension.js) hands the cells to the placement: [`lib/shelf.js`](lib/shelf.js) (the default strip), [`lib/panel.js`](lib/panel.js) or [`lib/rail.js`](lib/rail.js). Agent sources live in [`lib/agents/`](lib/agents) and are merged by [`modules/agents.js`](modules/agents.js). Readers in [`reader/`](reader) run as short Python subprocesses. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [DECISIONS.md](DECISIONS.md) and [docs/TESTING.md](docs/TESTING.md).
 
 ![Architecture: host, placements, modules and their sources](docs/diagrams/architecture.svg)
 

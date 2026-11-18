@@ -654,8 +654,8 @@
    "y": 94.25,
    "width": 204,
    "height": 19.5,
-   "text": "Power \u00b7 power.js",
-   "originalText": "Power \u00b7 power.js",
+   "text": "Agents \u00b7 agents.js",
+   "originalText": "Agents \u00b7 agents.js",
    "fontSize": 15,
    "fontFamily": 2,
    "textAlign": "center",
@@ -686,12 +686,12 @@
   {
    "type": "rectangle",
    "id": "box10",
-   "x": 954,
-   "y": 198,
+   "x": 644,
+   "y": 140,
    "width": 220,
    "height": 44,
    "strokeColor": "#232A33",
-   "backgroundColor": "#FCE7D2",
+   "backgroundColor": "#E2F5D8",
    "fillStyle": "solid",
    "strokeWidth": 1,
    "roughness": 0,
@@ -718,12 +718,12 @@
   {
    "type": "text",
    "id": "text10",
-   "x": 962,
-   "y": 210.25,
+   "x": 652,
+   "y": 152.25,
    "width": 204,
    "height": 19.5,
-   "text": "power-profiles-daemon (D-Bus)",
-   "originalText": "power-profiles-daemon (D-Bus)",
+   "text": "Power \u00b7 power.js",
+   "originalText": "Power \u00b7 power.js",
    "fontSize": 15,
    "fontFamily": 2,
    "textAlign": "center",
@@ -754,12 +754,12 @@
   {
    "type": "rectangle",
    "id": "box11",
-   "x": 644,
-   "y": 140,
+   "x": 954,
+   "y": 198,
    "width": 220,
    "height": 44,
    "strokeColor": "#232A33",
-   "backgroundColor": "#E2F5D8",
+   "backgroundColor": "#FCE7D2",
    "fillStyle": "solid",
    "strokeWidth": 1,
    "roughness": 0,
@@ -786,12 +786,12 @@
   {
    "type": "text",
    "id": "text11",
-   "x": 652,
-   "y": 152.25,
+   "x": 962,
+   "y": 210.25,
    "width": 204,
    "height": 19.5,
-   "text": "Todo \u00b7 todo.js",
-   "originalText": "Todo \u00b7 todo.js",
+   "text": "power-profiles-daemon (D-Bus)",
+   "originalText": "power-profiles-daemon (D-Bus)",
    "fontSize": 15,
    "fontFamily": 2,
    "textAlign": "center",
@@ -822,12 +822,12 @@
   {
    "type": "rectangle",
    "id": "box12",
-   "x": 954,
-   "y": 256,
+   "x": 644,
+   "y": 198,
    "width": 220,
    "height": 44,
    "strokeColor": "#232A33",
-   "backgroundColor": "#FCE7D2",
+   "backgroundColor": "#E2F5D8",
    "fillStyle": "solid",
    "strokeWidth": 1,
    "roughness": 0,
@@ -854,12 +854,12 @@
   {
    "type": "text",
    "id": "text12",
-   "x": 962,
-   "y": 268.25,
+   "x": 652,
+   "y": 210.25,
    "width": 204,
    "height": 19.5,
-   "text": "~/.local/share/ledge/todos.json",
-   "originalText": "~/.local/share/ledge/todos.json",
+   "text": "Todo \u00b7 todo.js",
+   "originalText": "Todo \u00b7 todo.js",
    "fontSize": 15,
    "fontFamily": 2,
    "textAlign": "center",
@@ -890,12 +890,12 @@
   {
    "type": "rectangle",
    "id": "box13",
-   "x": 644,
-   "y": 198,
+   "x": 954,
+   "y": 256,
    "width": 220,
    "height": 44,
    "strokeColor": "#232A33",
-   "backgroundColor": "#E2F5D8",
+   "backgroundColor": "#FCE7D2",
    "fillStyle": "solid",
    "strokeWidth": 1,
    "roughness": 0,
@@ -922,12 +922,12 @@
   {
    "type": "text",
    "id": "text13",
-   "x": 652,
-   "y": 210.25,
+   "x": 962,
+   "y": 268.25,
    "width": 204,
    "height": 19.5,
-   "text": "Models \u00b7 models.js",
-   "originalText": "Models \u00b7 models.js",
+   "text": "~/.local/share/ledge/todos.json",
+   "originalText": "~/.local/share/ledge/todos.json",
    "fontSize": 15,
    "fontFamily": 2,
    "textAlign": "center",
@@ -958,12 +958,12 @@
   {
    "type": "rectangle",
    "id": "box14",
-   "x": 954,
-   "y": 314,
+   "x": 644,
+   "y": 256,
    "width": 220,
    "height": 44,
    "strokeColor": "#232A33",
-   "backgroundColor": "#FCE7D2",
+   "backgroundColor": "#E2F5D8",
    "fillStyle": "solid",
    "strokeWidth": 1,
    "roughness": 0,
@@ -990,12 +990,12 @@
   {
    "type": "text",
    "id": "text14",
-   "x": 962,
-   "y": 326.25,
+   "x": 652,
+   "y": 268.25,
    "width": 204,
    "height": 19.5,
-   "text": "reader/lmstudio.py",
-   "originalText": "reader/lmstudio.py",
+   "text": "Models \u00b7 models.js",
+   "originalText": "Models \u00b7 models.js",
    "fontSize": 15,
    "fontFamily": 2,
    "textAlign": "center",
@@ -1027,7 +1027,7 @@
    "type": "rectangle",
    "id": "box15",
    "x": 954,
-   "y": 372,
+   "y": 314,
    "width": 220,
    "height": 44,
    "strokeColor": "#232A33",
@@ -1059,11 +1059,11 @@
    "type": "text",
    "id": "text15",
    "x": 962,
-   "y": 384.25,
+   "y": 326.25,
    "width": 204,
    "height": 19.5,
-   "text": "localhost:11434",
-   "originalText": "localhost:11434",
+   "text": "reader/lmstudio.py",
+   "originalText": "reader/lmstudio.py",
    "fontSize": 15,
    "fontFamily": 2,
    "textAlign": "center",
@@ -1095,7 +1095,7 @@
    "type": "rectangle",
    "id": "box16",
    "x": 954,
-   "y": 430,
+   "y": 372,
    "width": 220,
    "height": 44,
    "strokeColor": "#232A33",
@@ -1127,11 +1127,11 @@
    "type": "text",
    "id": "text16",
    "x": 962,
-   "y": 442.25,
+   "y": 384.25,
    "width": 204,
    "height": 19.5,
-   "text": "localhost:1234",
-   "originalText": "localhost:1234",
+   "text": "localhost:11434",
+   "originalText": "localhost:11434",
    "fontSize": 15,
    "fontFamily": 2,
    "textAlign": "center",
@@ -1163,7 +1163,7 @@
    "type": "rectangle",
    "id": "box17",
    "x": 954,
-   "y": 488,
+   "y": 430,
    "width": 220,
    "height": 44,
    "strokeColor": "#232A33",
@@ -1195,11 +1195,11 @@
    "type": "text",
    "id": "text17",
    "x": 962,
-   "y": 500.25,
+   "y": 442.25,
    "width": 204,
    "height": 19.5,
-   "text": "localhost:llamacpp-port",
-   "originalText": "localhost:llamacpp-port",
+   "text": "localhost:1234",
+   "originalText": "localhost:1234",
    "fontSize": 15,
    "fontFamily": 2,
    "textAlign": "center",
@@ -1231,7 +1231,7 @@
    "type": "rectangle",
    "id": "box18",
    "x": 954,
-   "y": 546,
+   "y": 488,
    "width": 220,
    "height": 44,
    "strokeColor": "#232A33",
@@ -1263,11 +1263,11 @@
    "type": "text",
    "id": "text18",
    "x": 962,
-   "y": 558.25,
+   "y": 500.25,
    "width": 204,
    "height": 19.5,
-   "text": "nvidia-smi",
-   "originalText": "nvidia-smi",
+   "text": "localhost:llamacpp-port",
+   "originalText": "localhost:llamacpp-port",
    "fontSize": 15,
    "fontFamily": 2,
    "textAlign": "center",
@@ -1298,12 +1298,12 @@
   {
    "type": "rectangle",
    "id": "box19",
-   "x": 644,
-   "y": 256,
+   "x": 954,
+   "y": 546,
    "width": 220,
    "height": 44,
    "strokeColor": "#232A33",
-   "backgroundColor": "#E2F5D8",
+   "backgroundColor": "#FCE7D2",
    "fillStyle": "solid",
    "strokeWidth": 1,
    "roughness": 0,
@@ -1330,12 +1330,12 @@
   {
    "type": "text",
    "id": "text19",
-   "x": 652,
-   "y": 268.25,
+   "x": 962,
+   "y": 558.25,
    "width": 204,
    "height": 19.5,
-   "text": "GitHub \u00b7 github.js",
-   "originalText": "GitHub \u00b7 github.js",
+   "text": "nvidia-smi",
+   "originalText": "nvidia-smi",
    "fontSize": 15,
    "fontFamily": 2,
    "textAlign": "center",
@@ -1366,12 +1366,12 @@
   {
    "type": "rectangle",
    "id": "box20",
-   "x": 954,
-   "y": 604,
+   "x": 644,
+   "y": 314,
    "width": 220,
    "height": 44,
    "strokeColor": "#232A33",
-   "backgroundColor": "#FCE7D2",
+   "backgroundColor": "#E2F5D8",
    "fillStyle": "solid",
    "strokeWidth": 1,
    "roughness": 0,
@@ -1398,12 +1398,12 @@
   {
    "type": "text",
    "id": "text20",
-   "x": 962,
-   "y": 616.25,
+   "x": 652,
+   "y": 326.25,
    "width": 204,
    "height": 19.5,
-   "text": "gh CLI",
-   "originalText": "gh CLI",
+   "text": "GitHub \u00b7 github.js",
+   "originalText": "GitHub \u00b7 github.js",
    "fontSize": 15,
    "fontFamily": 2,
    "textAlign": "center",
@@ -1434,12 +1434,12 @@
   {
    "type": "rectangle",
    "id": "box21",
-   "x": 644,
-   "y": 314,
+   "x": 954,
+   "y": 604,
    "width": 220,
    "height": 44,
    "strokeColor": "#232A33",
-   "backgroundColor": "#E2F5D8",
+   "backgroundColor": "#FCE7D2",
    "fillStyle": "solid",
    "strokeWidth": 1,
    "roughness": 0,
@@ -1466,12 +1466,12 @@
   {
    "type": "text",
    "id": "text21",
-   "x": 652,
-   "y": 326.25,
+   "x": 962,
+   "y": 616.25,
    "width": 204,
    "height": 19.5,
-   "text": "Copilot \u00b7 copilot.js",
-   "originalText": "Copilot \u00b7 copilot.js",
+   "text": "gh CLI",
+   "originalText": "gh CLI",
    "fontSize": 15,
    "fontFamily": 2,
    "textAlign": "center",
@@ -1538,8 +1538,8 @@
    "y": 384.25,
    "width": 204,
    "height": 19.5,
-   "text": "Training \u00b7 training.js",
-   "originalText": "Training \u00b7 training.js",
+   "text": "Copilot \u00b7 copilot.js",
+   "originalText": "Copilot \u00b7 copilot.js",
    "fontSize": 15,
    "fontFamily": 2,
    "textAlign": "center",
@@ -1570,12 +1570,12 @@
   {
    "type": "rectangle",
    "id": "box23",
-   "x": 954,
-   "y": 662,
+   "x": 644,
+   "y": 430,
    "width": 220,
    "height": 44,
    "strokeColor": "#232A33",
-   "backgroundColor": "#FCE7D2",
+   "backgroundColor": "#E2F5D8",
    "fillStyle": "solid",
    "strokeWidth": 1,
    "roughness": 0,
@@ -1602,12 +1602,12 @@
   {
    "type": "text",
    "id": "text23",
-   "x": 962,
-   "y": 674.25,
+   "x": 652,
+   "y": 442.25,
    "width": 204,
    "height": 19.5,
-   "text": "~/.local/share/ledge/runs",
-   "originalText": "~/.local/share/ledge/runs",
+   "text": "Training \u00b7 training.js",
+   "originalText": "Training \u00b7 training.js",
    "fontSize": 15,
    "fontFamily": 2,
    "textAlign": "center",
@@ -1623,6 +1623,74 @@
    "seed": 1023,
    "version": 1,
    "versionNonce": 1023,
+   "isDeleted": false,
+   "groupIds": [],
+   "boundElements": null,
+   "roundness": null,
+   "locked": false,
+   "link": null,
+   "updated": 1,
+   "frameId": null,
+   "strokeStyle": "solid",
+   "lineHeight": 1.25,
+   "autoResize": true
+  },
+  {
+   "type": "rectangle",
+   "id": "box24",
+   "x": 954,
+   "y": 662,
+   "width": 220,
+   "height": 44,
+   "strokeColor": "#232A33",
+   "backgroundColor": "#FCE7D2",
+   "fillStyle": "solid",
+   "strokeWidth": 1,
+   "roughness": 0,
+   "opacity": 100,
+   "angle": 0,
+   "seed": 25,
+   "version": 1,
+   "versionNonce": 25,
+   "isDeleted": false,
+   "groupIds": [],
+   "boundElements": [
+    {
+     "type": "text",
+     "id": "text24"
+    }
+   ],
+   "roundness": null,
+   "locked": false,
+   "link": null,
+   "updated": 1,
+   "frameId": null,
+   "strokeStyle": "solid"
+  },
+  {
+   "type": "text",
+   "id": "text24",
+   "x": 962,
+   "y": 674.25,
+   "width": 204,
+   "height": 19.5,
+   "text": "~/.local/share/ledge/runs",
+   "originalText": "~/.local/share/ledge/runs",
+   "fontSize": 15,
+   "fontFamily": 2,
+   "textAlign": "center",
+   "verticalAlign": "middle",
+   "containerId": "box24",
+   "strokeColor": "#232A33",
+   "backgroundColor": "transparent",
+   "fillStyle": "solid",
+   "strokeWidth": 1,
+   "roughness": 0,
+   "opacity": 100,
+   "angle": 0,
+   "seed": 1024,
+   "version": 1,
+   "versionNonce": 1024,
    "isDeleted": false,
    "groupIds": [],
    "boundElements": null,
@@ -2188,22 +2256,22 @@
   {
    "type": "arrow",
    "id": "arrow11",
-   "x": 864,
-   "y": 104.0,
-   "width": 90,
-   "height": 116.0,
+   "x": 244,
+   "y": 220.0,
+   "width": 400,
+   "height": -58.0,
    "points": [
     [
      0,
      0
     ],
     [
-     90,
-     116.0
+     400,
+     -58.0
     ]
    ],
    "startBinding": {
-    "elementId": "box9",
+    "elementId": "box0",
     "focus": 0,
     "gap": 1
    },
@@ -2238,22 +2306,22 @@
   {
    "type": "arrow",
    "id": "arrow12",
-   "x": 244,
-   "y": 220.0,
-   "width": 400,
-   "height": -58.0,
+   "x": 864,
+   "y": 162.0,
+   "width": 90,
+   "height": 58.0,
    "points": [
     [
      0,
      0
     ],
     [
-     400,
-     -58.0
+     90,
+     58.0
     ]
    ],
    "startBinding": {
-    "elementId": "box0",
+    "elementId": "box10",
     "focus": 0,
     "gap": 1
    },
@@ -2288,22 +2356,22 @@
   {
    "type": "arrow",
    "id": "arrow13",
-   "x": 864,
-   "y": 162.0,
-   "width": 90,
-   "height": 116.0,
+   "x": 244,
+   "y": 220.0,
+   "width": 400,
+   "height": 0.0,
    "points": [
     [
      0,
      0
     ],
     [
-     90,
-     116.0
+     400,
+     0.0
     ]
    ],
    "startBinding": {
-    "elementId": "box11",
+    "elementId": "box0",
     "focus": 0,
     "gap": 1
    },
@@ -2338,22 +2406,22 @@
   {
    "type": "arrow",
    "id": "arrow14",
-   "x": 244,
+   "x": 864,
    "y": 220.0,
-   "width": 400,
-   "height": 0.0,
+   "width": 90,
+   "height": 58.0,
    "points": [
     [
      0,
      0
     ],
     [
-     400,
-     0.0
+     90,
+     58.0
     ]
    ],
    "startBinding": {
-    "elementId": "box0",
+    "elementId": "box12",
     "focus": 0,
     "gap": 1
    },
@@ -2388,22 +2456,22 @@
   {
    "type": "arrow",
    "id": "arrow15",
-   "x": 864,
+   "x": 244,
    "y": 220.0,
-   "width": 90,
-   "height": 116.0,
+   "width": 400,
+   "height": 58.0,
    "points": [
     [
      0,
      0
     ],
     [
-     90,
-     116.0
+     400,
+     58.0
     ]
    ],
    "startBinding": {
-    "elementId": "box13",
+    "elementId": "box0",
     "focus": 0,
     "gap": 1
    },
@@ -2439,9 +2507,9 @@
    "type": "arrow",
    "id": "arrow16",
    "x": 864,
-   "y": 220.0,
+   "y": 278.0,
    "width": 90,
-   "height": 174.0,
+   "height": 58.0,
    "points": [
     [
      0,
@@ -2449,11 +2517,11 @@
     ],
     [
      90,
-     174.0
+     58.0
     ]
    ],
    "startBinding": {
-    "elementId": "box13",
+    "elementId": "box14",
     "focus": 0,
     "gap": 1
    },
@@ -2489,9 +2557,9 @@
    "type": "arrow",
    "id": "arrow17",
    "x": 864,
-   "y": 220.0,
+   "y": 278.0,
    "width": 90,
-   "height": 232.0,
+   "height": 116.0,
    "points": [
     [
      0,
@@ -2499,11 +2567,11 @@
     ],
     [
      90,
-     232.0
+     116.0
     ]
    ],
    "startBinding": {
-    "elementId": "box13",
+    "elementId": "box14",
     "focus": 0,
     "gap": 1
    },
@@ -2539,9 +2607,9 @@
    "type": "arrow",
    "id": "arrow18",
    "x": 864,
-   "y": 220.0,
+   "y": 278.0,
    "width": 90,
-   "height": 290.0,
+   "height": 174.0,
    "points": [
     [
      0,
@@ -2549,11 +2617,11 @@
     ],
     [
      90,
-     290.0
+     174.0
     ]
    ],
    "startBinding": {
-    "elementId": "box13",
+    "elementId": "box14",
     "focus": 0,
     "gap": 1
    },
@@ -2589,9 +2657,9 @@
    "type": "arrow",
    "id": "arrow19",
    "x": 864,
-   "y": 220.0,
+   "y": 278.0,
    "width": 90,
-   "height": 348.0,
+   "height": 232.0,
    "points": [
     [
      0,
@@ -2599,11 +2667,11 @@
     ],
     [
      90,
-     348.0
+     232.0
     ]
    ],
    "startBinding": {
-    "elementId": "box13",
+    "elementId": "box14",
     "focus": 0,
     "gap": 1
    },
@@ -2638,22 +2706,22 @@
   {
    "type": "arrow",
    "id": "arrow20",
-   "x": 244,
-   "y": 220.0,
-   "width": 400,
-   "height": 58.0,
+   "x": 864,
+   "y": 278.0,
+   "width": 90,
+   "height": 290.0,
    "points": [
     [
      0,
      0
     ],
     [
-     400,
-     58.0
+     90,
+     290.0
     ]
    ],
    "startBinding": {
-    "elementId": "box0",
+    "elementId": "box14",
     "focus": 0,
     "gap": 1
    },
@@ -2688,22 +2756,22 @@
   {
    "type": "arrow",
    "id": "arrow21",
-   "x": 864,
-   "y": 278.0,
-   "width": 90,
-   "height": 348.0,
+   "x": 244,
+   "y": 220.0,
+   "width": 400,
+   "height": 116.0,
    "points": [
     [
      0,
      0
     ],
     [
-     90,
-     348.0
+     400,
+     116.0
     ]
    ],
    "startBinding": {
-    "elementId": "box19",
+    "elementId": "box0",
     "focus": 0,
     "gap": 1
    },
@@ -2738,22 +2806,22 @@
   {
    "type": "arrow",
    "id": "arrow22",
-   "x": 244,
-   "y": 220.0,
-   "width": 400,
-   "height": 116.0,
+   "x": 864,
+   "y": 336.0,
+   "width": 90,
+   "height": 290.0,
    "points": [
     [
      0,
      0
     ],
     [
-     400,
-     116.0
+     90,
+     290.0
     ]
    ],
    "startBinding": {
-    "elementId": "box0",
+    "elementId": "box20",
     "focus": 0,
     "gap": 1
    },
@@ -2788,56 +2856,6 @@
   {
    "type": "arrow",
    "id": "arrow23",
-   "x": 864,
-   "y": 336.0,
-   "width": 90,
-   "height": 290.0,
-   "points": [
-    [
-     0,
-     0
-    ],
-    [
-     90,
-     290.0
-    ]
-   ],
-   "startBinding": {
-    "elementId": "box21",
-    "focus": 0,
-    "gap": 1
-   },
-   "endBinding": {
-    "elementId": "box20",
-    "focus": 0,
-    "gap": 1
-   },
-   "endArrowhead": "arrow",
-   "startArrowhead": null,
-   "strokeColor": "#232A33",
-   "backgroundColor": "transparent",
-   "fillStyle": "solid",
-   "strokeWidth": 1,
-   "roughness": 0,
-   "opacity": 100,
-   "angle": 0,
-   "seed": 2023,
-   "version": 1,
-   "versionNonce": 2023,
-   "isDeleted": false,
-   "groupIds": [],
-   "boundElements": null,
-   "roundness": null,
-   "locked": false,
-   "link": null,
-   "updated": 1,
-   "frameId": null,
-   "strokeStyle": "solid",
-   "lastCommittedPoint": null
-  },
-  {
-   "type": "arrow",
-   "id": "arrow24",
    "x": 244,
    "y": 220.0,
    "width": 400,
@@ -2871,6 +2889,56 @@
    "roughness": 0,
    "opacity": 100,
    "angle": 0,
+   "seed": 2023,
+   "version": 1,
+   "versionNonce": 2023,
+   "isDeleted": false,
+   "groupIds": [],
+   "boundElements": null,
+   "roundness": null,
+   "locked": false,
+   "link": null,
+   "updated": 1,
+   "frameId": null,
+   "strokeStyle": "solid",
+   "lastCommittedPoint": null
+  },
+  {
+   "type": "arrow",
+   "id": "arrow24",
+   "x": 864,
+   "y": 394.0,
+   "width": 90,
+   "height": 232.0,
+   "points": [
+    [
+     0,
+     0
+    ],
+    [
+     90,
+     232.0
+    ]
+   ],
+   "startBinding": {
+    "elementId": "box22",
+    "focus": 0,
+    "gap": 1
+   },
+   "endBinding": {
+    "elementId": "box21",
+    "focus": 0,
+    "gap": 1
+   },
+   "endArrowhead": "arrow",
+   "startArrowhead": null,
+   "strokeColor": "#232A33",
+   "backgroundColor": "transparent",
+   "fillStyle": "solid",
+   "strokeWidth": 1,
+   "roughness": 0,
+   "opacity": 100,
+   "angle": 0,
    "seed": 2024,
    "version": 1,
    "versionNonce": 2024,
@@ -2888,22 +2956,22 @@
   {
    "type": "arrow",
    "id": "arrow25",
-   "x": 864,
-   "y": 394.0,
-   "width": 90,
-   "height": 290.0,
+   "x": 244,
+   "y": 220.0,
+   "width": 400,
+   "height": 232.0,
    "points": [
     [
      0,
      0
     ],
     [
-     90,
-     290.0
+     400,
+     232.0
     ]
    ],
    "startBinding": {
-    "elementId": "box22",
+    "elementId": "box0",
     "focus": 0,
     "gap": 1
    },
@@ -2924,6 +2992,56 @@
    "seed": 2025,
    "version": 1,
    "versionNonce": 2025,
+   "isDeleted": false,
+   "groupIds": [],
+   "boundElements": null,
+   "roundness": null,
+   "locked": false,
+   "link": null,
+   "updated": 1,
+   "frameId": null,
+   "strokeStyle": "solid",
+   "lastCommittedPoint": null
+  },
+  {
+   "type": "arrow",
+   "id": "arrow26",
+   "x": 864,
+   "y": 452.0,
+   "width": 90,
+   "height": 232.0,
+   "points": [
+    [
+     0,
+     0
+    ],
+    [
+     90,
+     232.0
+    ]
+   ],
+   "startBinding": {
+    "elementId": "box23",
+    "focus": 0,
+    "gap": 1
+   },
+   "endBinding": {
+    "elementId": "box24",
+    "focus": 0,
+    "gap": 1
+   },
+   "endArrowhead": "arrow",
+   "startArrowhead": null,
+   "strokeColor": "#232A33",
+   "backgroundColor": "transparent",
+   "fillStyle": "solid",
+   "strokeWidth": 1,
+   "roughness": 0,
+   "opacity": 100,
+   "angle": 0,
+   "seed": 2026,
+   "version": 1,
+   "versionNonce": 2026,
    "isDeleted": false,
    "groupIds": [],
    "boundElements": null,

@@ -14,24 +14,22 @@ QUALITY = '90'
 # The smoke desktop colour, used to pad the unfold frames to one size.
 BACKDROP = '0x1d4f91'
 FRAME_SECONDS = '0.7'
+DEMO_SECONDS = '1.6'
 
 STILLS = {
-    'hero.webp': 'panel-deck-claude.png',
-    'screenshots/panel.webp': 'panel.png',
-    'screenshots/usage-claude.webp': 'deck-claude-depth.png',
-    'screenshots/usage-codex.webp': 'deck-right-codex.png',
-    'screenshots/models.webp': 'deck-right-models.png',
-    'screenshots/copilot.webp': 'panel-deck-copilot.png',
-    'screenshots/github.webp': 'deck-right-github.png',
-    'screenshots/power.webp': 'deck-right-power.png',
-    'screenshots/todo.webp': 'deck-right-todo.png',
-    'screenshots/training.webp': 'deck-right-training.png',
+    'hero.webp': 'shelf-claude.png',
+    'screenshots/shelf.webp': 'shelf-open.png',
+    'screenshots/shelf-rest.webp': 'shelf-rest.png',
+    'screenshots/agents.webp': 'shelf-agents.png',
+    'screenshots/usage-claude.webp': 'shelf-claude.png',
+    'screenshots/todo.webp': 'shelf-todo.png',
     'screenshots/rail.webp': 'rail-right.png',
-    'screenshots/accounts.webp': 'rail-accounts.png',
-    'screenshots/summary.webp': 'panel-summary.png',
+    'screenshots/panel.webp': 'panel.png',
     'screenshots/theme-frosted-dark.webp': 'theme-frosted-dark.png',
     'screenshots/theme-snow.webp': 'theme-snow.png',
 }
+# The demo recording: the shelf opening, a dial's dropdown, then the agents.
+DEMO = ['shelf-rest.png', 'shelf-open.png', 'shelf-claude.png', 'shelf-agents.png']
 UNFOLD = ['tick-right.png', 'unfold-right.png', 'rail-right.png', 'deck-right-claude.png']
 
 
@@ -49,7 +47,7 @@ def size(path: Path) -> tuple[int, int]:
 def main() -> int:
     if not shutil.which('ffmpeg'):
         raise SystemExit('ffmpeg is needed: sudo apt install ffmpeg')
-    needed = list(STILLS.values()) + UNFOLD
+    needed = list(STILLS.values()) + UNFOLD + DEMO
     missing = [name for name in needed if not (SMOKE / name).exists()]
     if missing:
         raise SystemExit(f'Run make smoke first. Missing: {", ".join(missing)}')
@@ -69,7 +67,16 @@ def main() -> int:
     joined = ''.join(f'[f{i}]' for i in range(len(UNFOLD)))
     ffmpeg(*inputs, '-filter_complex', f'{pads}{joined}concat=n={len(UNFOLD)}:v=1:a=0,fps=10[v]', '-map', '[v]',
            '-c:v', 'libwebp_anim', '-loop', '0', '-quality', QUALITY, str(DOCS / 'rail-unfold.webp'))
-    print(f'Wrote {len(STILLS) + 1} images to {DOCS}')
+    width = max(size(SMOKE / name)[0] for name in DEMO)
+    height = max(size(SMOKE / name)[1] for name in DEMO)
+    inputs = []
+    for name in DEMO:
+        inputs += ['-loop', '1', '-t', DEMO_SECONDS, '-i', str(SMOKE / name)]
+    pads = ''.join(f'[{i}:v]pad={width}:{height}:(ow-iw)/2:0:color={BACKDROP},setsar=1[d{i}];' for i in range(len(DEMO)))
+    joined = ''.join(f'[d{i}]' for i in range(len(DEMO)))
+    ffmpeg(*inputs, '-filter_complex', f'{pads}{joined}concat=n={len(DEMO)}:v=1:a=0,fps=10[v]', '-map', '[v]',
+           '-c:v', 'libwebp_anim', '-loop', '0', '-quality', QUALITY, str(DOCS / 'agents-demo.webp'))
+    print(f'Wrote {len(STILLS) + 2} images to {DOCS}')
     return 0
 
 
