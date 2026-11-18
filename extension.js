@@ -9,6 +9,7 @@ import {orderUsage} from './model.js';
 import {Appearance} from './lib/appearance.js';
 import {Rail} from './lib/rail.js';
 import {Panel} from './lib/panel.js';
+import {Shelf} from './lib/shelf.js';
 import {USAGE_MODULES} from './modules/usage.js';
 import {PowerModule} from './modules/power.js';
 import {TodoModule} from './modules/todo.js';
@@ -65,7 +66,7 @@ export default class Ledge extends Extension {
     }
 
     _createPlacement() {
-        const Placement = this._settings.get_string('placement') === 'edge' ? Rail : Panel;
+        const Placement = {edge: Rail, panel: Panel}[this._settings.get_string('placement')] ?? Shelf;
         return new Placement({
             settings: this._settings,
             theme: () => this._theme,

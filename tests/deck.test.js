@@ -140,3 +140,13 @@ test('the top bar strip falls back to compact chips, then one summary chip', asy
     assert.deepEqual([CHIP.railWidth, CHIP.panelWidth, CHIP.compactWidth, CHIP.summaryWidth], [96, 80, 32, 22]);
     for (const width of [CHIP.railWidth, CHIP.panelWidth, CHIP.compactWidth]) assert.equal(width % 4, 0, 'chip widths stay on the grid');
 });
+
+test('roundedRects stays inside its box and cuts the corners', async () => {
+    const {roundedRects} = await import('../design.js');
+    const rects = roundedRects(100, 40, 10);
+    assert.ok(rects.every(([x, y, w, h]) => x >= 0 && y >= 0 && x + w <= 100 && y + h <= 40));
+    assert.equal(rects[0][0] > 0, true);
+    const area = rects.reduce((sum, [, , w, h]) => sum + w * h, 0);
+    const exact = 100 * 40 - (4 - Math.PI) * 100;
+    assert.ok(Math.abs(area - exact) / exact < 0.01);
+});

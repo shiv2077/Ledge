@@ -49,3 +49,22 @@
 .ledge-small-action { padding: 4px 8px; border-radius: 0; background-color: #161b22; color: #e8ecf2; font-size: 11px; }
 .ledge-small-action:hover { background-color: #212730; }
 .ledge-small-action:focus { background-color: #2a313b; box-shadow: inset 0 0 0 1px #9aa4b2; }
+
+/* Shelf: lens in the top bar and the glass sheet. Colors come from the theme. */
+.ledge-lens { border-radius: 9px; padding: 4px 8px; margin: 3px 0; background-color: #161b22; }
+.ledge-lens:hover, .ledge-lens:checked { background-color: #212730; }
+.ledge-lens-figure { font-family: "JetBrains Mono", "Ubuntu Sans Mono", monospace; font-size: 12px; font-weight: 600; color: #e8ecf2; }
+.ledge-shelf { font-family: "Ubuntu Sans", "Cantarell", sans-serif; color: #e8ecf2; }
+.ledge-shelf-item { border-radius: 12px; padding: 10px 4px 8px; background-color: transparent; }
+.ledge-shelf-item:hover, .ledge-shelf-item:checked { background-color: #212730; }
+.ledge-shelf-row { padding: 0 10px; }
+.ledge-shelf-figure { font-family: "JetBrains Mono", "Ubuntu Sans Mono", monospace; font-size: 15px; font-weight: 700; color: #e8ecf2; }
+.ledge-shelf-tag { font-size: 11px; font-weight: 600; }
+.ledge-shelf-name { font-size: 13px; color: #e8ecf2; }
+.ledge-shelf-value { font-family: "JetBrains Mono", "Ubuntu Sans Mono", monospace; font-size: 12px; color: #7e8794; }
+.ledge-shelf .ledge-deck-title { font-size: 15px; font-weight: 600; letter-spacing: 0; }
+.ledge-shelf .ledge-body, .ledge-shelf .ledge-row-title { font-size: 13px; }
+.ledge-shelf .ledge-section { font-size: 11px; letter-spacing: 1px; }
+.ledge-shelf .ledge-row { border-radius: 8px; padding: 4px 0; }
+.ledge-shelf .ledge-action { font-size: 12px; }
+.ledge-shelf .ledge-entry { border-radius: 8px; padding: 6px 10px; }

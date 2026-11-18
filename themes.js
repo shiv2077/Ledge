@@ -304,6 +304,12 @@ function themeRules(t) {
     const focusRing = `box-shadow: inset 0 0 0 1px ${cssColor(t.highlight)};`;
     return `
 .ledge-readout, .ledge-deck-title, .ledge-body, .ledge-row-title, .ledge-chip-icon { color: ${cssColor(t.textPrimary)}; }
+.ledge-shelf-figure, .ledge-shelf-name, .ledge-lens-figure { color: ${cssColor(t.textPrimary)}; }
+.ledge-shelf-value { color: ${cssColor(t.textSecondary)}; }
+.ledge-shelf-item:hover, .ledge-shelf-item:checked { background-color: ${cssColor(t.controlHover)}; }
+.ledge-shelf-item:focus { ${focusRing} }
+.ledge-lens { background-color: ${cssColor(t.control)}; }
+.ledge-lens:hover, .ledge-lens:checked, .ledge-lens:focus { background-color: ${cssColor(t.controlHover)}; }
 .ledge-deck { color: ${cssColor(t.textPrimary)}; box-shadow: 0 8px 24px 0 ${cssColor(t.shadow)}; }
 .ledge-caption, .ledge-section, .ledge-stamp, .ledge-figure { color: ${cssColor(t.textSecondary)}; }
 .ledge-warning { color: ${cssColor(t.warning)}; }

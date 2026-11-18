@@ -1,5 +1,6 @@
 // Cairo drawing for the Deck look: chamfered panels, segmented meters and
 // monogram badges. Colors arrive resolved from the theme.
+import Cairo from 'cairo';
 import {CHAMFER, METER, TYPE, CHIP, chamferPoints} from './design.js';
 import {rgba} from './themes.js';
 
@@ -137,6 +138,99 @@ export function drawMeter(cr, x, y, width, height, gap, fills, lit, off, stale =
 
 // Monogram badge: a square with one cut corner in a faint accent wash, and
 // two letters in the accent.
+function roundedPath(cr, x, y, w, h, r) {
+    r = Math.max(0, Math.min(r, w / 2, h / 2));
+    cr.newSubPath();
+    cr.arc(x + w - r, y + r, r, -Math.PI / 2, 0);
+    cr.arc(x + w - r, y + h - r, r, 0, Math.PI / 2);
+    cr.arc(x + r, y + h - r, r, Math.PI / 2, Math.PI);
+    cr.arc(x + r, y + r, r, Math.PI, 1.5 * Math.PI);
+    cr.closePath();
+}
+
+// The shelf's glass: a tinted rounded sheet with a soft sheen from the top
+// and a light rim. Under it, the actor's blur shows the desktop.
+export function drawGlass(cr, w, h, radius, tint, alpha, sheen, rim) {
+    const [r, g, b] = rgba(tint);
+    roundedPath(cr, 0.5, 0.5, w - 1, h - 1, radius);
+    cr.setSourceRGBA(r, g, b, alpha);
+    cr.fillPreserve();
+    const light = new Cairo.LinearGradient(0, 0, 0, h);
+    light.addColorStopRGBA(0, 1, 1, 1, sheen);
+    light.addColorStopRGBA(0.45, 1, 1, 1, 0);
+    cr.setSource(light);
+    cr.fillPreserve();
+    const edge = new Cairo.LinearGradient(0, 0, 0, h);
+    edge.addColorStopRGBA(0, 1, 1, 1, rim);
+    edge.addColorStopRGBA(1, 1, 1, 1, rim / 3);
+    cr.setSource(edge);
+    cr.setLineWidth(1);
+    cr.stroke();
+}
+
+// A smooth rounded track with a rounded fill, for meters in the shelf.
+export function drawTrack(cr, w, h, fraction, color, off, stale = false) {
+    const [r, g, b] = rgba(off);
+    roundedPath(cr, 0, 0, w, h, h / 2);
+    cr.setSourceRGBA(r, g, b, 1);
+    cr.fill();
+    if (typeof fraction !== 'number' || fraction <= 0) return;
+    const [fr, fg, fb] = rgba(color);
+    roundedPath(cr, 0, 0, Math.max(h, w * Math.min(1, fraction)), h, h / 2);
+    const fill = new Cairo.LinearGradient(0, 0, w, 0);
+    fill.addColorStopRGBA(0, fr, fg, fb, stale ? 0.3 : 0.55);
+    fill.addColorStopRGBA(1, fr, fg, fb, stale ? 0.45 : 1);
+    cr.setSource(fill);
+    cr.fill();
+}
+
+// A glass tube holding `level` (0..1) of liquid whose surface is a wave at
+// `phase`. The tube is a capsule; the liquid brightens toward its surface.
+export function drawTube(cr, w, h, level, phase, amplitude, waveLength, color, glass, stale = false) {
+    const [r, g, b] = rgba(color);
+    const [gr, gg, gb] = rgba(glass);
+    roundedPath(cr, 0.75, 0.75, w - 1.5, h - 1.5, w / 2 - 0.75);
+    cr.setSourceRGBA(gr, gg, gb, 0.55);
+    cr.fillPreserve();
+    cr.save();
+    cr.clip();
+    if (typeof level === 'number' && level > 0) {
+        const top = h - level * h;
+        cr.moveTo(0, h);
+        for (let x = 0; x <= w; x += 1) cr.lineTo(x, top + amplitude * Math.sin(x / waveLength + phase));
+        cr.lineTo(w, h);
+        cr.closePath();
+        const fill = new Cairo.LinearGradient(0, top, 0, h);
+        fill.addColorStopRGBA(0, r, g, b, stale ? 0.45 : 0.95);
+        fill.addColorStopRGBA(1, r, g, b, stale ? 0.15 : 0.35);
+        cr.setSource(fill);
+        cr.fill();
+    }
+    cr.restore();
+    roundedPath(cr, 0.75, 0.75, w - 1.5, h - 1.5, w / 2 - 0.75);
+    cr.setSourceRGBA(1, 1, 1, 0.14);
+    cr.setLineWidth(1);
+    cr.stroke();
+    // A highlight down the left wall, as on curved glass.
+    cr.rectangle(w * 0.24, h * 0.12, 1.5, h * 0.5);
+    cr.setSourceRGBA(1, 1, 1, 0.12);
+    cr.fill();
+}
+
+// The lens trace: a short line in `color`, moving when `amplitude` > 0.
+export function drawTrace(cr, w, h, phase, amplitude, color) {
+    const [r, g, b] = rgba(color);
+    cr.setLineWidth(1.5);
+    cr.setLineCap(Cairo.LineCap.ROUND);
+    cr.moveTo(1, h / 2);
+    for (let x = 1; x <= w - 1; x++) {
+        const k = x / w;
+        cr.lineTo(x, h / 2 + amplitude * Math.sin(Math.PI * k) * Math.sin(x / 2.6 - phase) * Math.sin(phase / 7 + x / 9));
+    }
+    cr.setSourceRGBA(r, g, b, 1);
+    cr.stroke();
+}
+
 export function drawBadge(cr, size, text, accent) {
     traceCut(cr, 0, 0, size, size, CHAMFER.small);
     source(cr, accent, CHIP.badgeAlpha);

@@ -44,7 +44,7 @@ export default class LedgePreferences extends ExtensionPreferences {
             g.add(row);
             return row;
         };
-        addChoice(placement, 'placement', 'Place', ['panel', 'edge'], ['Top bar', 'Screen edge']);
+        addChoice(placement, 'placement', 'Place', ['shelf', 'panel', 'edge'], ['Top bar lens', 'Top bar chips', 'Screen edge']);
         const panelRows = [
             addChoice(placement, 'panel-box', 'Top bar section', ['left', 'center', 'right'], ['Left', 'Centre', 'Right']),
             addSpin(placement, 'panel-position', 'Position in section', '−1 places it right after the clock in the centre, or last in other sections.', -1, 64, 1),
@@ -57,9 +57,9 @@ export default class LedgePreferences extends ExtensionPreferences {
         ];
         // Only the options for the chosen place are shown.
         const syncPlacement = () => {
-            const edge = settings.get_string('placement') === 'edge';
-            for (const row of panelRows) row.visible = !edge;
-            for (const row of edgeRows) row.visible = edge;
+            const place = settings.get_string('placement');
+            for (const row of panelRows) row.visible = place === 'panel';
+            for (const row of edgeRows) row.visible = place === 'edge';
         };
         settings.connect('changed::placement', syncPlacement);
         syncPlacement();

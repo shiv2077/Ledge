@@ -44,6 +44,34 @@ export const TICK = {thickness: 4, length: 44, hotZone: 8, alpha: 0.85};
 export const RAIL = {padding: SPACE.xs, endPadding: SPACE.md, chipGap: SPACE.xs};
 export const DECK = {width: 340, padding: SPACE.lg, spacing: SPACE.md, rule: 2, bracket: 12, rowIcon: 16, actionIcon: 14};
 
+// The shelf: a glass lens in the top bar that opens into one glass sheet.
+export const SHELF = {
+    lensWidth: 40, lensTrace: 14, lensRadius: 9, lensMargin: 4,
+    radius: 18, padding: 18, gap: 16, sheetGap: 6, itemRadius: 12,
+    tube: {width: 28, height: 78, wall: 1.5, wave: 2.2, waveLength: 7, speed: 2.6, still: 0.6},
+    tubeColumn: 62, statWidth: 168, statHeight: 30, detailWidth: 520,
+    tint: 0.74, blur: 30, brightness: 0.6, sheen: 0.07, rim: 0.12,
+    open: 340, close: 160, intent: 120, grace: 420, fill: 0.006, lensFrame: 50,
+};
+
+// A rounded rectangle as whole-pixel rows, for the glass stencil clip.
+export function roundedRects(width, height, radius) {
+    const w = Math.round(width), h = Math.round(height);
+    const r = Math.max(0, Math.min(radius, w / 2, h / 2));
+    const spans = [];
+    for (let y = 0; y < h; y++) {
+        const dy = Math.max(0, r - Math.min(y + 0.5, h - y - 0.5));
+        const inset = Math.round(r - Math.sqrt(Math.max(0, r * r - dy * dy)));
+        const last = spans[spans.length - 1];
+        if (last && last.inset === inset) last.end = y + 1;
+        else spans.push({start: y, end: y + 1, inset});
+    }
+    return spans.map(({start, end, inset}) => [inset, start, w - 2 * inset, end - start]).filter(([, , rw]) => rw > 0);
+}
+
+// Liquid surface height at x: a travelling wave, flat when amplitude is 0.
+export const waveAt = (x, phase, amplitude, length) => amplitude * Math.sin(x / length + phase);
+
 export const MOTION = {
     hoverIntent: 80,
     foldGrace: 300,

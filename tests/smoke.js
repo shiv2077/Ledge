@@ -3,7 +3,7 @@
 import Ledge from './implementation.js';
 import {usageSource} from './modules/usage.js';
 import {rgba} from './themes.js';
-import {CHAMFER, CHIP, DECK, TICK, MOTION, railSize} from './design.js';
+import {CHAMFER, CHIP, DECK, TICK, MOTION, SHELF, railSize} from './design.js';
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 import Shell from 'gi://Shell';
@@ -803,6 +803,59 @@ export default class Smoke extends Ledge {
         done('sources');
     }
 
+    // The shelf: a lens after the clock that opens one glass sheet with
+    // tubes, a list and the selected source's detail.
+    async checkShelf(move) {
+        this._settings.set_string('placement', 'shelf');
+        await delay(500);
+        const S = this._placement;
+        const centre = Main.panel._centerBox;
+        const clock = Main.panel.statusArea.dateMenu.container;
+        assert(S.lens.get_parent() === centre && centre.get_children().indexOf(S.lens) === centre.get_children().indexOf(clock) + 1, 'The lens sits right after the clock');
+        const [cx] = clock.get_transformed_position();
+        assert(Math.abs(cx + clock.width / 2 - global.stage.width / 2) <= 2, 'The clock stays centred');
+        assert(S.lens.height <= Main.panel.height, 'The lens fits inside the top bar');
+        move(...(() => { const [x, y] = S.lens.get_transformed_position(); return [x + S.lens.width / 2, y + S.lens.height / 2]; })());
+        await delay(SHELF.intent + 500);
+        assert(S._open && S.sheet.visible, 'Hovering the lens opens the shelf');
+        await delay(1200);
+        const tubes = [...S._items.values()].filter(item => item.constructor.name === 'Tube');
+        assert(tubes.length >= 4 && tubes.every(t => Math.abs(t._shown - t._target()) < 0.01), 'Tubes fill to their levels');
+        const [sx, sy] = S.sheet.get_transformed_position();
+        const panelBottom = Main.panel.get_transformed_position()[1] + Main.panel.height;
+        assert(sy >= panelBottom && sy - panelBottom <= SHELF.sheetGap + 1, 'The sheet opens just under the top bar');
+        assert(sx >= 0 && sx + S.sheet.width <= global.stage.width, 'The sheet stays on the monitor');
+        assert(S.sheet.get_effect('ledge-blur'), 'The sheet is frosted glass');
+        const area = () => ({x: S.sheet.x - PAD, y: 0, width: S.sheet.width + 2 * PAD, height: S.sheet.y + S.sheet.height + PAD});
+        await this.capture('shelf-open', area());
+        S._select('claude');
+        await delay(600);
+        assert(S.deck.visible && S.deck.key === 'claude' && S._detail.visible, 'Selecting a tube shows its detail in the sheet');
+        await this.capture('shelf-claude', area());
+        S._select('todo');
+        await delay(600);
+        assert(S.deck.key === 'todo', 'Selecting a row switches the detail');
+        await this.capture('shelf-todo', area());
+        S._select('todo');
+        await delay(200);
+        assert(!S._detail.visible, 'Selecting the open source again folds its detail');
+        move(global.stage.width - 10, global.stage.height - 10);
+        await delay(SHELF.grace + 400);
+        assert(!S._open && !S.sheet.visible, 'Leaving the shelf closes it');
+        await this.capture('shelf-rest', {x: global.stage.width / 2 - 260, y: 0, width: 520, height: Main.panel.height + 8});
+        const count = centre.get_n_children();
+        for (let i = 0; i < 3; i++) {
+            this._settings.set_string('placement', 'edge');
+            await delay(200);
+            this._settings.set_string('placement', 'shelf');
+            await delay(200);
+        }
+        assert(centre.get_n_children() === count, 'Switching placement leaves no lens or spacer behind');
+        this._settings.set_string('placement', 'edge');
+        await delay(300);
+        done('shelf');
+    }
+
     async runSmoke() {
         await delay(2200);
         Main.overview.hide();
@@ -827,6 +880,7 @@ export default class Smoke extends Ledge {
         await this.checkAccounts(move);
         const keyboard = Clutter.get_default_backend().get_default_seat().create_virtual_device(Clutter.InputDeviceType.KEYBOARD_DEVICE);
         await this.checkPanel(pointer, keyboard);
+        await this.checkShelf(move);
 
         this._settings.set_boolean('cursor', false);
         await delay(600);

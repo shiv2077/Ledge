@@ -9,7 +9,7 @@
     <key name="glass-blur" type="i"><default>30</default><range min="0" max="100"/><summary>Frosted glass blur radius in pixels</summary></key>
     <key name="glass-tint" type="d"><default>0.7</default><range min="0.55" max="0.95"/><summary>Frosted glass tint opacity</summary></key>
     <key name="glass-brightness" type="d"><default>0.85</default><range min="0.5" max="1.0"/><summary>Frosted glass backdrop brightness</summary></key>
-    <key name="placement" type="s"><default>'panel'</default><choices><choice value="panel"/><choice value="edge"/></choices><summary>Where Ledge lives: the top bar or a screen edge</summary></key>
+    <key name="placement" type="s"><default>'shelf'</default><choices><choice value="shelf"/><choice value="panel"/><choice value="edge"/></choices><summary>Where Ledge lives: a lens in the top bar that opens a glass shelf, chips in the top bar, or a screen edge</summary></key>
     <key name="panel-box" type="s"><default>'center'</default><choices><choice value="left"/><choice value="center"/><choice value="right"/></choices><summary>Top bar section that holds the chips</summary></key>
     <key name="panel-position" type="i"><default>-1</default><range min="-1" max="64"/><summary>Position in the top bar section; -1 is right after the clock in the centre, or the end of any other section</summary></key>
     <key name="panel-open-on-hover" type="b"><default>false</default><summary>Open the deck when the pointer rests on a top bar chip</summary></key>
