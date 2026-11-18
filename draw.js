@@ -3,6 +3,7 @@
 import Cairo from 'cairo';
 import {CHAMFER, METER, TYPE, CHIP, chamferPoints, dotGlyphs, dotOrder} from './design.js';
 import {rgba} from './themes.js';
+import {GLYPHS, GLYPH_OUTLINES, GLYPH_SCALE} from './glyphs.js';
 
 // Source color with its own alpha scaled by `alpha`.
 function source(cr, color, alpha = 1) {
@@ -333,6 +334,36 @@ export function drawDotIcon(cr, rows, x, y, dot, gap, color) {
     });
     cr.setSourceRGBA(r, g, b, 1);
     cr.fill();
+}
+
+// A provider's outline filled with a dot grid: the exact shape, drawn in
+// dots. Returns false when there is no outline for `id`.
+export function drawDotGlyph(cr, id, cx, cy, size, step, dot, color) {
+    const key = GLYPHS[id];
+    const loops = GLYPH_OUTLINES[key];
+    if (!loops?.length) return false;
+    const scale = (GLYPH_SCALE[key] ?? 1) * size;
+    const [ox, oy] = [cx - scale / 2, cy - scale / 2];
+    cr.save();
+    for (const loop of loops) {
+        cr.newSubPath();
+        cr.moveTo(ox + loop[0][0] * scale, oy + loop[0][1] * scale);
+        for (const [x, y] of loop.slice(1)) cr.lineTo(ox + x * scale, oy + y * scale);
+        cr.closePath();
+    }
+    cr.clip();
+    const [r, g, b] = rgba(color);
+    const half = Math.ceil(scale / 2 / step) + 1;
+    for (let i = -half; i <= half; i++) {
+        for (let j = -half; j <= half; j++) {
+            cr.newSubPath();
+            cr.arc(cx + i * step, cy + j * step, dot / 2, 0, 2 * Math.PI);
+        }
+    }
+    cr.setSourceRGBA(r, g, b, 1);
+    cr.fill();
+    cr.restore();
+    return true;
 }
 
 // The lens trace: a short line in `color`, moving when `amplitude` > 0.

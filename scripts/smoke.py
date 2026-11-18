@@ -23,7 +23,7 @@ with tempfile.TemporaryDirectory(prefix='ledge-smoke-') as folder:
     base = Path(folder)
     extension = base / 'data/gnome-shell/extensions/ledge@shiv2077'
     extension.mkdir(parents=True)
-    for name in ['metadata.json', 'extension.js', 'model.js', 'design.js', 'themes.js', 'draw.js',
+    for name in ['metadata.json', 'extension.js', 'model.js', 'design.js', 'themes.js', 'draw.js', 'glyphs.js',
                  'prefs.js', 'stylesheet.css']:
         shutil.copy2(ROOT / name, extension / name)
     for name in ['lib', 'modules', 'reader', 'schemas']:
