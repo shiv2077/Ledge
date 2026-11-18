@@ -2,9 +2,9 @@
 
 Ledge is a GNOME Shell 50 extension written as ES modules for GJS, with a few Python 3 readers run as subprocesses. Nothing in it blocks the shell's main loop: file reads, subprocesses and HTTP are all asynchronous with timeouts.
 
-![Host, placements, modules and their sources](diagrams/architecture.svg)
+![Ledge system design: the loop between you and your agents](diagrams/loop.svg)
 
-The diagrams are generated from the code by `make diagrams` ([`scripts/diagrams.py`](../scripts/diagrams.py)). Each has an `.excalidraw` scene beside its SVG; open it at excalidraw.com, or in any Excalidraw editor, to rearrange or annotate it.
+The diagrams are drawn by `make diagrams` ([`scripts/diagrams.py`](../scripts/diagrams.py)). Each has an editable Excalidraw file beside its SVG.
 
 ## Host
 
@@ -51,7 +51,6 @@ How they combine:
 
 ## Readers
 
-![Readers and the files they read](diagrams/readers.svg)
 
 | Reader | Output |
 | --- | --- |

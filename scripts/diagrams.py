@@ -1,260 +1,214 @@
 #!/usr/bin/env python3
-"""Generate the architecture diagrams in docs/diagrams from the code.
+"""Generate Ledge's system diagrams in docs/diagrams.
 
-Reads the module order from extension.js, each module's data sources from
-its file, and the placements from lib/. Writes an Excalidraw scene and an
-SVG for each diagram. Re-running with unchanged code writes identical files.
+Two diagrams, each written as an SVG (for the README) and an Excalidraw
+scene (to edit): the loop Ledge closes between a developer and their agents,
+and the agent pipeline. Dark, to sit on GitHub's dark page. Re-running
+writes identical files.
 """
 from __future__ import annotations
 
 import json
-import re
+import math
 import sys
 from pathlib import Path
 from xml.sax.saxutils import escape
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / 'docs' / 'diagrams'
-BOX_W, BOX_H, GAP_X, GAP_Y, PAD = 220, 44, 90, 14, 24
-FONT = 15
-COLORS = {'host': '#E8ECF2', 'place': '#D7E3FC', 'module': '#E2F5D8', 'source': '#FCE7D2', 'stroke': '#232A33'}
-
-SOURCE_PATTERNS = [
-    (r"reader/([a-z_]+\.py)", lambda m: f'reader/{m.group(1)}'),
-    (r"_args\('([a-z_]+\.py)'\)", lambda m: f'reader/{m.group(1)}'),
-    (r"\[\s*'gh'|run\(\['gh'", lambda m: 'gh CLI'),
-    (r"127\.0\.0\.1:(\d+)", lambda m: f'localhost:{m.group(1)}'),
-    (r"llamacpp-port", lambda m: 'localhost:llamacpp-port'),
-    (r"'nvidia-smi'", lambda m: 'nvidia-smi'),
-    (r"PowerProfiles|net\.hadess|UPower", lambda m: 'power-profiles-daemon (D-Bus)'),
-    (r"FileMonitor|monitor_directory", lambda m: '~/.local/share/ledge/runs'),
-    (r"lib/agents/([a-z]+)\.js", lambda m: {'status': 'hook status files', 'workspace': 'workspace snapshot',
-        'sessions': 'Claude / Codex sessions', 'proc': '/proc agent scan'}.get(m.group(1), m.group(1))),
-    (r"todos\.json", lambda m: '~/.local/share/ledge/todos.json'),
-]
+INK = {'bg': '#0d1117', 'node': '#161b22', 'edge': '#30363d', 'text': '#e6edf3', 'dim': '#8b949e',
+       'accent': '#ff4d4d', 'stage': '#1f2630'}
+FONT = "-apple-system, 'Segoe UI', 'Ubuntu', 'Helvetica Neue', Arial, sans-serif"
+TITLE, SUB, HEAD = 15, 12, 11
 
 
-def module_order() -> list[tuple[str, str]]:
-    """(class name, file) in chip order, from extension.js."""
+class Diagram:
+    def __init__(self, width: int, height: int, title: str):
+        self.width, self.height, self.title = width, height, title
+        self.nodes: list[dict] = []
+        self.arrows: list[dict] = []
+        self.labels: list[dict] = []
 
-    text = (ROOT / 'extension.js').read_text()
-    imports = dict((name, path) for names, path in re.findall(r"import \{([^}]+)\} from '\./(modules/[a-z]+\.js)'", text)
-                   for name in [n.strip() for n in names.split(',')])
-    order = re.search(r"const MODULES = \[([^\]]+)\]", text).group(1)
-    result = []
-    for token in [t.strip() for t in order.split(',') if t.strip()]:
-        name = token.lstrip('.')
-        result.append((name, imports[name]))
-    return result
+    def node(self, x, y, w, h, title, lines=(), accent=False, stage=False) -> int:
+        self.nodes.append({'x': x, 'y': y, 'w': w, 'h': h, 'title': title, 'lines': list(lines), 'accent': accent, 'stage': stage})
+        return len(self.nodes) - 1
 
+    def arrow(self, points, accent=False):
+        self.arrows.append({'points': points, 'accent': accent})
 
-def sources(path: str) -> list[str]:
-    text = (ROOT / path).read_text()
-    found: list[str] = []
-    for pattern, label in SOURCE_PATTERNS:
-        for match in re.finditer(pattern, text):
-            value = label(match)
-            if value not in found:
-                found.append(value)
-    return found
+    def label(self, x, y, text, size=HEAD, color='dim', anchor='middle', weight=600, spacing=1.5):
+        self.labels.append({'x': x, 'y': y, 'text': text, 'size': size, 'color': color, 'anchor': anchor, 'weight': weight, 'spacing': spacing})
 
+    # ---- SVG ----
 
-def label_of(name: str) -> str:
-    if name == 'USAGE_MODULES':
-        return 'Claude, Cursor, Codex'
-    return {'GithubModule': 'GitHub', 'CopilotModule': 'Copilot'}.get(name, re.sub(r'Module$', '', name))
+    def svg(self) -> str:
+        out = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{self.width}" height="{self.height}" viewBox="0 0 {self.width} {self.height}" '
+               f'font-family="{escape(FONT)}"><title>{escape(self.title)}</title>',
+               '<defs>'
+               f'<marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="{INK["dim"]}"/></marker>'
+               f'<marker id="r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="{INK["accent"]}"/></marker>'
+               '</defs>',
+               f'<rect width="100%" height="100%" rx="14" fill="{INK["bg"]}"/>']
+        for n in self.nodes:
+            if n['stage']:
+                out.append(f'<rect x="{n["x"]}" y="{n["y"]}" width="{n["w"]}" height="{n["h"]}" rx="12" fill="{INK["stage"]}" fill-opacity="0.35" '
+                           f'stroke="{INK["edge"]}" stroke-dasharray="3 5"/>')
+        for a in self.arrows:
+            pts = a['points']
+            if len(pts) == 3:
+                d = f'M{pts[0][0]:.1f},{pts[0][1]:.1f} Q{pts[1][0]:.1f},{pts[1][1]:.1f} {pts[2][0]:.1f},{pts[2][1]:.1f}'
+            else:
+                d = f'M{pts[0][0]:.1f},{pts[0][1]:.1f} ' + ' '.join(f'L{x:.1f},{y:.1f}' for x, y in pts[1:])
+            color, marker = (INK['accent'], 'r') if a['accent'] else (INK['dim'], 'a')
+            out.append(f'<path d="{d}" fill="none" stroke="{color}" stroke-width="1.6" marker-end="url(#{marker})"/>')
+        for n in self.nodes:
+            if n['stage']:
+                continue
+            stroke = INK['accent'] if n['accent'] else INK['edge']
+            out.append(f'<rect x="{n["x"]:.1f}" y="{n["y"]:.1f}" width="{n["w"]}" height="{n["h"]}" rx="10" fill="{INK["node"]}" '
+                       f'stroke="{stroke}" stroke-width="1.2"/>')
+            lines = [(n['title'], TITLE, INK['text'], 600)] + [(t, SUB, INK['dim'], 400) for t in n['lines']]
+            total = sum(size * 1.45 for _, size, _, _ in lines)
+            y = n['y'] + (n['h'] - total) / 2
+            for text, size, color, weight in lines:
+                y += size * 1.45
+                out.append(f'<text x="{n["x"] + n["w"] / 2:.1f}" y="{y - size * 0.35:.1f}" text-anchor="middle" font-size="{size}" '
+                           f'font-weight="{weight}" fill="{color}">{escape(text)}</text>')
+        for t in self.labels:
+            out.append(f'<text x="{t["x"]}" y="{t["y"]}" text-anchor="{t["anchor"]}" font-size="{t["size"]}" font-weight="{t["weight"]}" '
+                       f'letter-spacing="{t["spacing"]}" fill="{INK[t["color"]]}">{escape(t["text"])}</text>')
+        out.append('</svg>\n')
+        return '\n'.join(out)
 
-
-def wobble(a: float, b: float, amount: float = 1.6) -> float:
-    """A small offset that depends only on its inputs, so output is stable."""
-    return ((int(a * 7 + b * 13) % 17) / 17 - 0.5) * amount
-
-
-def sketch_rect(x: float, y: float, w: float, h: float, pass_: int) -> str:
-    """A hand-drawn rectangle: corners nudged, edges slightly bowed."""
-    k = pass_ + 1
-    pts = [(x + wobble(x, y * k), y + wobble(y, x * k)), (x + w + wobble(w, y * k), y + wobble(x * k, w)),
-           (x + w + wobble(h, x * k), y + h + wobble(w * k, h)), (x + wobble(y * k, h), y + h + wobble(h * k, x))]
-    d = f'M{pts[0][0]:.1f},{pts[0][1]:.1f}'
-    for i in range(1, 5):
-        (ax, ay), (bx, by) = pts[i - 1], pts[i % 4]
-        cx, cy = (ax + bx) / 2 + wobble(ax, by * k, 2.4), (ay + by) / 2 + wobble(ay * k, bx, 2.4)
-        d += f' Q{cx:.1f},{cy:.1f} {bx:.1f},{by:.1f}'
-    return d
-
-
-class Scene:
-    def __init__(self) -> None:
-        self.boxes: list[dict] = []
-        self.arrows: list[tuple[int, int]] = []
-
-    def box(self, column: int, row: int, text: str, kind: str) -> int:
-        self.boxes.append({'x': PAD + column * (BOX_W + GAP_X), 'y': PAD + row * (BOX_H + GAP_Y), 'text': text, 'kind': kind})
-        return len(self.boxes) - 1
-
-    def arrow(self, a: int, b: int) -> None:
-        if (a, b) not in self.arrows:
-            self.arrows.append((a, b))
-
-    def size(self) -> tuple[int, int]:
-        width = max(b['x'] for b in self.boxes) + BOX_W + PAD
-        height = max(b['y'] for b in self.boxes) + BOX_H + PAD
-        return width, height
-
-    def _ends(self, a: int, b: int) -> tuple[float, float, float, float]:
-        # A box to the left: leave from the left edge.
-        if self.boxes[b]['x'] < self.boxes[a]['x']:
-            return (self.boxes[a]['x'], self.boxes[a]['y'] + BOX_H / 2,
-                    self.boxes[b]['x'] + BOX_W, self.boxes[b]['y'] + BOX_H / 2)
-        # Boxes in one column connect bottom to top.
-        if self.boxes[a]['x'] == self.boxes[b]['x']:
-            x = self.boxes[a]['x'] + BOX_W / 2
-            return x, self.boxes[a]['y'] + BOX_H, x, self.boxes[b]['y']
-        x1 = self.boxes[a]['x'] + BOX_W
-        y1 = self.boxes[a]['y'] + BOX_H / 2
-        x2 = self.boxes[b]['x']
-        y2 = self.boxes[b]['y'] + BOX_H / 2
-        return x1, y1, x2, y2
-
-    def svg(self, title: str) -> str:
-        width, height = self.size()
-        parts = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}" '
-                 f'font-family="Virgil, \'Comic Neue\', \'Comic Sans MS\', cursive" font-size="{FONT}"><title>{escape(title)}</title>',
-                 '<defs><marker id="head" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto">'
-                 f'<path d="M0,0 L10,5 L0,10 z" fill="{COLORS["stroke"]}"/></marker></defs>',
-                 f'<rect width="{width}" height="{height}" fill="#FFFFFF"/>']
-        for a, b in self.arrows:
-            x1, y1, x2, y2 = self._ends(a, b)
-            mx, my = (x1 + x2) / 2 + wobble(x1, y2, 6), (y1 + y2) / 2 + wobble(y1, x2, 6)
-            parts.append(f'<path d="M{x1:.1f},{y1:.1f} Q{mx:.1f},{my:.1f} {x2:.1f},{y2:.1f}" fill="none" stroke="{COLORS["stroke"]}" '
-                         f'stroke-width="1.3" stroke-linecap="round" marker-end="url(#head)"/>')
-        for b in self.boxes:
-            # Excalidraw-style: a fill, then two slightly wobbly outlines.
-            parts.append(f'<rect x="{b["x"]}" y="{b["y"]}" width="{BOX_W}" height="{BOX_H}" fill="{COLORS[b["kind"]]}"/>')
-            for pass_ in range(2):
-                parts.append(f'<path d="{sketch_rect(b["x"], b["y"], BOX_W, BOX_H, pass_)}" fill="none" '
-                             f'stroke="{COLORS["stroke"]}" stroke-width="1.3" stroke-linecap="round"/>')
-            parts.append(f'<text x="{b["x"] + BOX_W / 2}" y="{b["y"] + BOX_H / 2 + FONT / 3}" text-anchor="middle" '
-                         f'fill="{COLORS["stroke"]}">{escape(b["text"])}</text>')
-        parts.append('</svg>\n')
-        return '\n'.join(parts)
+    # ---- Excalidraw ----
 
     def excalidraw(self) -> str:
         elements = []
-        for i, b in enumerate(self.boxes):
-            elements.append({'type': 'rectangle', 'id': f'box{i}', 'x': b['x'], 'y': b['y'], 'width': BOX_W, 'height': BOX_H,
-                             'strokeColor': COLORS['stroke'], 'backgroundColor': COLORS[b['kind']], 'fillStyle': 'solid',
-                             'strokeWidth': 1, 'roughness': 1, 'opacity': 100, 'angle': 0, 'seed': i + 1, 'version': 1,
-                             'versionNonce': i + 1, 'isDeleted': False, 'groupIds': [], 'boundElements': [{'type': 'text', 'id': f'text{i}'}],
-                             'roundness': None, 'locked': False, 'link': None, 'updated': 1, 'frameId': None, 'strokeStyle': 'solid'})
-            elements.append({'type': 'text', 'id': f'text{i}', 'x': b['x'] + 8, 'y': b['y'] + BOX_H / 2 - FONT * 0.65,
-                             'width': BOX_W - 16, 'height': FONT * 1.3, 'text': b['text'], 'originalText': b['text'],
-                             'fontSize': FONT, 'fontFamily': 1, 'textAlign': 'center', 'verticalAlign': 'middle', 'containerId': f'box{i}',
-                             'strokeColor': COLORS['stroke'], 'backgroundColor': 'transparent', 'fillStyle': 'solid', 'strokeWidth': 1,
-                             'roughness': 1, 'opacity': 100, 'angle': 0, 'seed': 1000 + i, 'version': 1, 'versionNonce': 1000 + i,
-                             'isDeleted': False, 'groupIds': [], 'boundElements': None, 'roundness': None, 'locked': False,
-                             'link': None, 'updated': 1, 'frameId': None, 'strokeStyle': 'solid', 'lineHeight': 1.25, 'autoResize': True})
-        for j, (a, b) in enumerate(self.arrows):
-            x1, y1, x2, y2 = self._ends(a, b)
-            elements.append({'type': 'arrow', 'id': f'arrow{j}', 'x': x1, 'y': y1, 'width': x2 - x1, 'height': y2 - y1,
-                             'points': [[0, 0], [x2 - x1, y2 - y1]], 'startBinding': {'elementId': f'box{a}', 'focus': 0, 'gap': 1},
-                             'endBinding': {'elementId': f'box{b}', 'focus': 0, 'gap': 1}, 'endArrowhead': 'arrow', 'startArrowhead': None,
-                             'strokeColor': COLORS['stroke'], 'backgroundColor': 'transparent', 'fillStyle': 'solid', 'strokeWidth': 1,
-                             'roughness': 1, 'opacity': 100, 'angle': 0, 'seed': 2000 + j, 'version': 1, 'versionNonce': 2000 + j,
-                             'isDeleted': False, 'groupIds': [], 'boundElements': None, 'roundness': None, 'locked': False,
-                             'link': None, 'updated': 1, 'frameId': None, 'strokeStyle': 'solid', 'lastCommittedPoint': None})
+        seed = [1]
+
+        def base(kind, x, y, w, h, **extra):
+            seed[0] += 1
+            item = {'type': kind, 'id': f'{kind}{seed[0]}', 'x': x, 'y': y, 'width': w, 'height': h, 'angle': 0,
+                    'strokeColor': INK['edge'], 'backgroundColor': 'transparent', 'fillStyle': 'solid', 'strokeWidth': 1,
+                    'strokeStyle': 'solid', 'roughness': 0, 'opacity': 100, 'groupIds': [], 'frameId': None, 'seed': seed[0],
+                    'version': 1, 'versionNonce': seed[0], 'isDeleted': False, 'boundElements': None, 'updated': 1,
+                    'link': None, 'locked': False, 'roundness': {'type': 3}}
+            item.update(extra)
+            return item
+
+        def text(x, y, w, value, size, color):
+            return base('text', x, y, w, size * 1.3 * (value.count('\n') + 1), text=value, originalText=value, fontSize=size,
+                        fontFamily=2, textAlign='center', verticalAlign='middle', containerId=None, strokeColor=color,
+                        lineHeight=1.3, autoResize=True, roundness=None)
+
+        for n in self.nodes:
+            if n['stage']:
+                elements.append(base('rectangle', n['x'], n['y'], n['w'], n['h'], strokeStyle='dashed', backgroundColor=INK['stage']))
+                continue
+            elements.append(base('rectangle', n['x'], n['y'], n['w'], n['h'], backgroundColor=INK['node'],
+                                 strokeColor=INK['accent'] if n['accent'] else INK['edge']))
+            elements.append(text(n['x'] + 8, n['y'] + 10, n['w'] - 16, '\n'.join([n['title'], *n['lines']]), SUB + 1, INK['text']))
+        for a in self.arrows:
+            pts = a['points']
+            x0, y0 = pts[0]
+            rel = [[x - x0, y - y0] for x, y in pts]
+            xs, ys = [p[0] for p in rel], [p[1] for p in rel]
+            elements.append(base('arrow', x0, y0, max(xs) - min(xs), max(ys) - min(ys), points=rel, startArrowhead=None,
+                                 endArrowhead='arrow', strokeColor=INK['accent'] if a['accent'] else INK['dim'],
+                                 startBinding=None, endBinding=None, lastCommittedPoint=None, roundness={'type': 2}))
+        for t in self.labels:
+            w = len(t['text']) * t['size'] * 0.62
+            x = t['x'] - w / 2 if t['anchor'] == 'middle' else t['x']
+            elements.append(text(x, t['y'] - t['size'], w, t['text'], t['size'], INK[t['color']]))
         scene = {'type': 'excalidraw', 'version': 2, 'source': 'scripts/diagrams.py', 'elements': elements,
-                 'appState': {'viewBackgroundColor': '#ffffff', 'gridSize': None}, 'files': {}}
+                 'appState': {'viewBackgroundColor': INK['bg'], 'gridSize': None}, 'files': {}}
         return json.dumps(scene, indent=1) + '\n'
 
 
-def architecture() -> Scene:
-    """Placements on the left of the host, modules on its right, each one
-    level with its own sources."""
-    scene = Scene()
-    order = module_order()
-    rows: list[tuple[str, str, int, list[str]]] = []
-    next_row = 0
-    seen: set[str] = set()
-    for name, path in order:
-        own = [source for source in sources(path) if source not in seen]
-        seen.update(own)
-        rows.append((name, path, next_row, sources(path)))
-        next_row += max(1, len(own))
-    host = scene.box(1, (next_row - 1) / 2, 'extension.js (host)', 'host')
-    places = ['lib/shelf.js (lens + strip)', 'lib/rail.js (edge rail)', 'lib/panel.js (top bar chips)', 'lib/deck.js (dropdown)']
-    for i, label in enumerate(places):
-        scene.arrow(host, scene.box(0, (next_row - len(places)) / 2 + i, label, 'place'))
-    sources_at: dict[str, int] = {}
-    for name, path, row, own in rows:
-        module = scene.box(2, row, f'{label_of(name)} · {Path(path).name}', 'module')
-        scene.arrow(host, module)
-        offset = 0
-        for source in own:
-            if source not in sources_at:
-                sources_at[source] = scene.box(3, row + offset, source, 'source')
-                offset += 1
-            scene.arrow(module, sources_at[source])
-    return scene
+def edge_point(n: dict, toward: tuple[float, float]) -> tuple[float, float]:
+    """Where the line from a node's centre toward a point leaves its box."""
+    cx, cy = n['x'] + n['w'] / 2, n['y'] + n['h'] / 2
+    dx, dy = toward[0] - cx, toward[1] - cy
+    scale = min((n['w'] / 2) / abs(dx) if dx else math.inf, (n['h'] / 2) / abs(dy) if dy else math.inf)
+    return cx + dx * scale * 1.04, cy + dy * scale * 1.04
 
 
-def readers() -> Scene:
-    scene = Scene()
-    flows = [
-        ('modules/usage.js', ['reader/usage_reader.py', 'reader/activity.py', 'reader/costs.py'],
-         [['usage endpoints, sign-ins'], ['~/.claude/sessions, Cursor, Codex'], ['~/.claude/projects, ~/.codex/sessions']]),
-        ('modules/models.js', ['reader/lmstudio.py'], [['~/.lmstudio/server-logs']]),
+def loop() -> Diagram:
+    """The loop Ledge closes: agents work, Ledge observes and understands,
+    the top bar surfaces it, the developer acts, the agents go on."""
+    d = Diagram(1080, 660, 'Ledge system design: the agent loop')
+    d.label(540, 44, 'LEDGE · SYSTEM DESIGN', size=13, color='text', spacing=3)
+    d.label(540, 66, 'A local loop between you and your coding agents', size=12, color='dim', weight=400, spacing=0)
+    cx, cy, rx, ry, w, h = 540, 360, 380, 210, 280, 92
+    steps = [
+        ('You', ['run several AI coding agents', 'across terminals and worktrees'], False),
+        ('Coding agents', ['Claude Code · Codex · other CLIs', 'they work, ask and finish'], False),
+        ('Observe', ['agent hooks · session files', 'workspace panes · provider limits'], False),
+        ('Understand', ['one entry per agent · worktree', 'clashes · waiting queue · pace'], False),
+        ('Surface', ['lens · dot strip · dropdowns', 'red when something needs you'], True),
+        ('Act', ['jump to the waiting agent', 'approve, answer, or pace work'], False),
     ]
-    row = 0
-    for module, scripts, inputs in flows:
-        m = scene.box(0, row, module, 'module')
-        for script, files in zip(scripts, inputs):
-            s = scene.box(1, row, script, 'place')
-            scene.arrow(m, s)
-            for item in files:
-                scene.arrow(s, scene.box(2, row, item, 'source'))
-            row += 1
-    cache = scene.box(3, 1, '~/.cache/ledge (0600)', 'host')
-    for i, b in enumerate(scene.boxes):
-        if b['text'] in ('reader/usage_reader.py', 'reader/costs.py', 'reader/lmstudio.py'):
-            scene.arrow(i, cache)
-    return scene
+    ids = []
+    for i, (title, lines, accent) in enumerate(steps):
+        angle = -math.pi / 2 + i * 2 * math.pi / len(steps)
+        ids.append(d.node(cx + rx * math.cos(angle) - w / 2, cy + ry * math.sin(angle) - h / 2, w, h, title, lines, accent=accent))
+    for i, a in enumerate(ids):
+        na, nb = d.nodes[a], d.nodes[ids[(i + 1) % len(ids)]]
+        ca = (na['x'] + na['w'] / 2, na['y'] + na['h'] / 2)
+        cb = (nb['x'] + nb['w'] / 2, nb['y'] + nb['h'] / 2)
+        mid = ((ca[0] + cb[0]) / 2, (ca[1] + cb[1]) / 2)
+        # Bow each arrow outward from the loop's centre.
+        out = (mid[0] - cx, mid[1] - cy)
+        length = math.hypot(*out) or 1
+        ctrl = (mid[0] + out[0] / length * 50, mid[1] + out[1] / length * 50)
+        d.arrow([edge_point(na, ctrl), ctrl, edge_point(nb, ctrl)], accent=i in (3, 4))
+    d.label(cx, cy - 10, 'OBSERVE → UNDERSTAND', size=12, color='dim')
+    d.label(cx, cy + 14, 'SURFACE → ACT', size=12, color='accent')
+    d.label(cx, cy + 44, 'on your machine · no telemetry · no message text', size=11, color='dim', weight=400, spacing=0)
+    return d
 
 
-def agents() -> Scene:
-    """Where agents come from, how they are merged, and where they show."""
-    scene = Scene()
-    hooks = scene.box(0, 0, 'Claude Code hooks', 'source')
-    workspace = scene.box(0, 2, 'multi-agent workspace panes', 'source')
-    sessions = scene.box(0, 3, 'Claude / Codex session files', 'source')
-    procs = scene.box(0, 4, 'running agent CLIs', 'source')
-    writer = scene.box(1, 0, 'tools/ledge_agent.py', 'place')
-    files = scene.box(1, 1, '~/.local/share/ledge/agents', 'host')
-    status = scene.box(2, 1, 'lib/agents/status.js', 'module')
-    workspace_js = scene.box(2, 2, 'lib/agents/workspace.js', 'module')
-    sessions_js = scene.box(2, 3, 'lib/agents/sessions.js', 'module')
-    proc_js = scene.box(2, 4, 'lib/agents/proc.js', 'module')
-    merge = scene.box(3, 2, 'mergeAgents (by pid)', 'place')
-    trees = scene.box(3, 3, 'worktree, branch, collisions', 'place')
-    module = scene.box(4, 2, 'modules/agents.js', 'host')
-    shelf = scene.box(5, 1, 'strip: dot constellation', 'place')
-    card = scene.box(5, 2, 'card: waiting first, by tree', 'place')
-    jump = scene.box(5, 3, 'Super+Shift+N: raise', 'place')
-    for a, b in [(hooks, writer), (writer, files), (files, status), (workspace, workspace_js), (sessions, sessions_js),
-                 (procs, proc_js), (status, merge), (workspace_js, merge), (sessions_js, merge), (proc_js, merge),
-                 (merge, module), (trees, module), (module, shelf), (module, card), (module, jump)]:
-        scene.arrow(a, b)
-    return scene
+def agents() -> Diagram:
+    """How agents travel from where they run to the top bar."""
+    d = Diagram(1080, 540, 'Ledge agent pipeline')
+    d.label(540, 40, 'MULTIPLE AGENTS · PIPELINE', size=13, color='text', spacing=3)
+    stages = [(40, 'SIGNALS'), (300, 'COLLECT'), (560, 'UNDERSTAND'), (820, 'SURFACE')]
+    for x, name in stages:
+        d.node(x - 12, 70, 244, 440, '', stage=True)
+        d.label(x + 110, 98, name, size=11, color='dim')
+    w, h = 220, 72
+    signals = [('Agent hooks', ['working · waiting · done']), ('Session files', ['Claude Code and Codex']),
+               ('Agent workspace', ['panes running agents']), ('Running processes', ['any agent CLI'])]
+    collectors = [('Status reader', ['exact states']), ('Session reader', ['estimated states']),
+                  ('Workspace reader', ['read only, every few s']), ('Process scan', ['shown as running'])]
+    sig = [d.node(40, 125 + i * 92, w, h, t, l) for i, (t, l) in enumerate(signals)]
+    col = [d.node(300, 125 + i * 92, w, h, t, l) for i, (t, l) in enumerate(collectors)]
+    merge = d.node(560, 150, w, 96, 'Merge', ['one entry per agent', 'by process, session or folder', 'most exact state wins'])
+    context = d.node(560, 320, w, 96, 'Context', ['git worktree and branch', 'clash: 2+ active, same tree', 'waiting queue, oldest first'])
+    outs = [('Dot constellation', ['white working · red waiting', 'count in the strip']),
+            ('Agents dropdown', ['waiting first, then by tree', 'click a row to jump']),
+            ('Jump shortcut', ['Super+Shift+N raises the', 'agent that waited longest'])]
+    out = [d.node(820, 125 + i * 125, w, 86, t, l, accent=i == 0) for i, (t, l) in enumerate(outs)]
+    for a, b in zip(sig, col):
+        na, nb = d.nodes[a], d.nodes[b]
+        d.arrow([(na['x'] + w + 2, na['y'] + h / 2), (nb['x'] - 4, nb['y'] + h / 2)])
+    m, c = d.nodes[merge], d.nodes[context]
+    for i in col:
+        n = d.nodes[i]
+        d.arrow([(n['x'] + w + 2, n['y'] + h / 2), (m['x'] - 20, m['y'] + 48), (m['x'] - 4, m['y'] + 48)])
+    d.arrow([(m['x'] + w / 2, m['y'] + 98), (c['x'] + w / 2, c['y'] - 4)])
+    for i, o in enumerate(out):
+        n = d.nodes[o]
+        d.arrow([(c['x'] + w + 2, c['y'] + 48), (n['x'] - 20, n['y'] + 43), (n['x'] - 4, n['y'] + 43)], accent=i == 0)
+    return d
 
 
 def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
-    diagrams = {'architecture': ('Ledge architecture', architecture()), 'readers': ('Ledge readers', readers()),
-                'agents': ('Ledge agent radar', agents())}
-    for name, (title, scene) in diagrams.items():
-        (OUT / f'{name}.svg').write_text(scene.svg(title))
-        (OUT / f'{name}.excalidraw').write_text(scene.excalidraw())
-    print(f'Wrote {len(diagrams)} diagrams to {OUT}')
+    for name, diagram in {'loop': loop(), 'agents': agents()}.items():
+        (OUT / f'{name}.svg').write_text(diagram.svg())
+        (OUT / f'{name}.excalidraw').write_text(diagram.excalidraw())
+    print(f'Wrote 2 diagrams to {OUT}')
     return 0
 
 

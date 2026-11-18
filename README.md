@@ -13,14 +13,12 @@
 
 </div>
 
-Ledge is a GNOME Shell extension for people who code with AI agents. A small lens sits beside the clock. Its trace moves while an agent works and flashes red when one starts waiting on you. Hover it, and a slim black strip drops out of the top bar:
-- dot-matrix dials for your Claude Code and Codex limits;
-- a live count of every coding agent you have running;
-- your power profile, todos, GitHub and training runs.
+Ledge is a GNOME Shell extension for people who code with several AI agents at once. It lives in the top bar as a small lens beside the clock:
+- **at rest**, the lens shows a live trace that moves while an agent works and flashes red when one starts waiting on you;
+- **hover it**, and a slim black strip drops out of the bar with your Claude Code and Codex limits, every running agent, and your power, todos, GitHub and training runs;
+- **hover any item**, and its details drop down below it.
 
-Hover any item and its details drop down below it.
-
-![The lens beside the clock, at rest](docs/screenshots/lens.webp)
+![The lens at rest beside the clock](docs/screenshots/lens.webp)
 
 ## Contents
 
@@ -28,12 +26,13 @@ Hover any item and its details drop down below it.
 - [Multiple agents at a glance](#multiple-agents-at-a-glance)
 - [Usage limits and spend](#usage-limits-and-spend)
 - [Everything else in the strip](#everything-else-in-the-strip)
+- [System design](#system-design)
 - [Alerts](#alerts)
+- [Appearance](#appearance)
 - [Installation](#installation)
 - [Usage](#usage)
 - [Reporting training runs](#reporting-training-runs)
 - [Privacy and security](#privacy-and-security)
-- [How it works](#how-it-works)
 - [Development](#development)
 - [Troubleshooting](#troubleshooting)
 - [Uninstalling](#uninstalling)
@@ -41,36 +40,34 @@ Hover any item and its details drop down below it.
 
 ## Highlights
 
-- **Multiple agents, one view.** Every Claude Code, Codex or other agent you run shows as a dot: white while it works, blinking red while it waits on you.
+- **Multiple agents, one view.** Every Claude Code, Codex or other coding agent you run shows as a dot: white while it works, blinking red while it waits on you.
 - **Jump to the agent that needs you.** **Super+Shift+N** raises the agent that has waited longest, down to its terminal pane.
-- **Clash warnings.** Two agents working in the same git worktree get a red tag before they step on each other's changes.
-- **Limits, pace and spend.** Each provider's quota is a dial. Its dropdown shows every limit window, whether you are ahead of or under pace, and an estimate of today's and this week's spend per project.
-- **A design of its own.** A dot-matrix display style: white on matte black, with red reserved for what needs your attention.
-- **Local and safe.** No telemetry, no stored tokens, no message text read. Every read is asynchronous, so the desktop never stalls.
+- **Clash warnings.** Two agents active in the same git worktree get a red tag before they step on each other's changes.
+- **Limits, pace and spend.** Each provider's quota is a dial. Its dropdown shows every limit window, whether you are ahead of or under pace, and today's and this week's estimated spend per project.
+- **A design of its own.** A dot-matrix display style: white on matte black, with red kept for what needs you.
+- **Local and private.** No telemetry, no stored tokens, and message text is never read. Every read is asynchronous, so the desktop never stalls.
 
 ## Multiple agents at a glance
 
 ![The agents dropdown: two agents waiting on you listed first, then one group per worktree, with a clash tag where two agents share a tree](docs/screenshots/agents.webp)
 
-Developers now run several agents at once, in separate terminals, panes and worktrees. Ledge keeps them in one view.
+Coding with AI now often means several agents at once, in separate terminals, panes and worktrees. Ledge keeps all of them in one place.
 
-In the strip, each running agent is one dot. White means working, blinking red means waiting on you, and dim means idle. The count turns red while anyone is waiting.
+**In the strip:** each running agent is one dot. White means working, blinking red means waiting on you, and dim means idle. The count turns red while anyone is waiting.
 
-Hover the dots for the full list:
-1. **Waiting on you**, first, with the reason (permission or input).
+**In the dropdown:**
+1. **Waiting on you** comes first, with the reason: permission or input.
 2. **Then one group per git worktree.** A red **2 active · same tree** tag marks agents working in the same tree.
-3. **Each row** shows the tool, folder and branch, how long it has been in that state, and how Ledge knows the state. Click a row to raise that agent's window or pane.
+3. **Each row** shows the tool, folder and branch, time in that state, and how Ledge knows it. Click a row to raise that agent's window or pane.
 
-Ledge collects agents from several sources and shows each agent once:
+![Agent pipeline: signals, collect, understand, surface](docs/diagrams/agents.svg)
 
-| Source | What it gives | Tested by hand |
+| Where agents are found | What Ledge learns | Tested by hand |
 | --- | --- | --- |
-| **Claude Code hooks** | Exact states: working, waiting (permission or input), finished | yes |
-| **Multi-agent terminal workspace** | Agents in workspace panes, with exact states and pane focus | yes |
-| **Claude Code and Codex sessions** | States guessed from session files when no hook reports (marked ◦) | Claude yes, Codex not yet |
-| **Running processes** | Agent command-line tools (claude, codex, opencode, pi, amp, gemini, aider), shown as *running* | yes |
-
-![How agents flow from their sources into the strip](docs/diagrams/agents.svg)
+| **Agent hooks** (Claude Code) | Exact states: working, waiting for permission or input, finished | yes |
+| **Multi-agent terminal workspace** | Agents in each pane, exact states, and pane focus for the jump | yes |
+| **Session files** (Claude Code, Codex) | Estimated states when no hook reports, marked ◦ | Claude yes, Codex not yet |
+| **Running processes** | Any agent CLI (claude, codex, opencode, pi, amp, gemini, aider), shown as *running* | yes |
 
 **Exact Claude Code states with hooks:**
 1. Run `make agent-tools`. It installs the small hook writer, `tools/ledge_agent.py`, to `~/.local/share/ledge/tools/`.
@@ -85,39 +82,44 @@ python3 ~/.local/share/ledge/tools/ledge_agent.py --id build-bot --tool mybot --
 
 ## Usage limits and spend
 
-<table>
-<tr>
-<td width="50%"><img src="docs/screenshots/claude.webp" alt="Claude Code dropdown: current session and weekly limits with pace, and spend for today and the last 7 days by project"></td>
-<td width="50%"><img src="docs/screenshots/codex.webp" alt="Codex dropdown: monthly limit with pace and spend"></td>
-</tr>
-<tr>
-<td><b>Claude Code.</b> Each limit window as a dotted bar, with its reset time and pace ("17% ahead of pace"). Below that, the estimated spend today and over 7 days, per project, read from your local transcripts at API list prices.</td>
-<td><b>Codex.</b> The same view for Codex limits. A dial turns red when little is left. Extra sign-ins such as <code>~/.claude-work</code> or <code>~/.codex-side</code> get their own dials.</td>
-</tr>
-</table>
+![Claude Code dropdown: current session and weekly limits with pace, and spend for today and the last 7 days by project](docs/screenshots/claude.webp)
+
+**Claude Code.** Each limit window is a dotted bar with its reset time and pace, such as "17% ahead of pace". Below it is the estimated spend today and over 7 days, per project, read from your local transcripts at API list prices.
+
+![Codex dropdown: monthly limit with pace and spend](docs/screenshots/codex.webp)
+
+**Codex.** The same view for Codex limits.
+
+A dial turns red when little is left. Extra sign-ins such as `~/.claude-work` or `~/.codex-side` get their own dials.
 
 ## Everything else in the strip
 
-<table>
-<tr>
-<td width="50%"><img src="docs/screenshots/power.webp" alt="Power dropdown with Power saver, Balanced and Performance"></td>
-<td width="50%"><img src="docs/screenshots/todo.webp" alt="Todo dropdown with an entry field"></td>
-</tr>
-<tr>
-<td><b>Power.</b> The active power profile; click another to switch.</td>
-<td><b>Todo.</b> Type and press Enter to add; tick to complete.</td>
-</tr>
-<tr>
-<td><img src="docs/screenshots/github.webp" alt="GitHub dropdown with review requests and your open pull requests"></td>
-<td><img src="docs/screenshots/training.webp" alt="Training dropdown with a finished run, its epoch and loss"></td>
-</tr>
-<tr>
-<td><b>GitHub.</b> Review requests, your open pull requests and CI for repositories you watch, read through the <code>gh</code> CLI.</td>
-<td><b>Training.</b> Live epoch and loss for runs that report with <code>tools/ledge_status.py</code>, plus a notice when one finishes, crashes or stalls.</td>
-</tr>
-</table>
+![Power, Todo, GitHub and Training dropdowns](docs/screenshots/widgets.webp)
+
+| Widget | What it does |
+| --- | --- |
+| **Power** (top left) | Shows the active power profile; click another to switch |
+| **Todo** (top right) | Type and press Enter to add; tick to complete |
+| **GitHub** (bottom left) | Review requests, your open pull requests and CI for repositories you watch, through the `gh` CLI |
+| **Training** (bottom right) | Live epoch and loss for runs that report with `tools/ledge_status.py`, and a notice when one finishes, crashes or stalls |
 
 Local models (Ollama, LM Studio, llama.cpp) and the GitHub Copilot quota can be switched on in Preferences.
+
+## System design
+
+![Ledge system design: you, your coding agents, observe, understand, surface, act](docs/diagrams/loop.svg)
+
+Ledge closes one loop between you and your agents:
+
+| Step | What happens |
+| --- | --- |
+| **You → Coding agents** | You start several agents across terminals and worktrees. They work, ask for permission or input, and finish |
+| **Observe** | Ledge reads the signals agents already leave: hook events, session files, workspace panes, running processes and provider usage limits. Each source has its own switch, and every read runs in the background with a timeout |
+| **Understand** | Signals become one entry per agent. Ledge adds each agent's worktree and branch, flags clashes, orders who has waited longest, and works out pace and spend |
+| **Surface** | The lens, the dot strip and the dropdowns show it. Red appears only when something needs you |
+| **Act** | You jump to the waiting agent, approve or answer it, or pace your work. The agents carry on and the loop repeats |
+
+Everything stays on your machine. More detail is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [DECISIONS.md](DECISIONS.md) and [docs/TESTING.md](docs/TESTING.md). Both diagrams have an editable Excalidraw file beside them in [`docs/diagrams/`](docs/diagrams).
 
 ## Alerts
 
@@ -200,18 +202,12 @@ Leaving the block marks the run done; an exception marks it crashed. A running j
 
 There is no telemetry. Ledge stores no tokens and never logs credentials or message text. The spend estimate reads only model names, timestamps, folder names and token counts from transcripts. The LM Studio counter matches only request paths. Caches live in `~/.cache/ledge` with private permissions; todos and training runs stay in `~/.local/share/ledge`.
 
-## How it works
-
-Each widget is a module in [`modules/`](modules) with a small interface: one or more cells for the strip, a deck, and `start()` / `stop()`. The host in [`extension.js`](extension.js) hands the cells to [`lib/shelf.js`](lib/shelf.js), which draws the lens, the strip and the dropdowns. Agent sources live in [`lib/agents/`](lib/agents) and are merged by [`modules/agents.js`](modules/agents.js). Readers in [`reader/`](reader) run as short Python subprocesses. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [DECISIONS.md](DECISIONS.md) and [docs/TESTING.md](docs/TESTING.md).
-
-![Architecture: host, modules and their sources](docs/diagrams/architecture.svg)
-
 ## Development
 
 ```sh
 make test       # Node, Python and GJS tests, schema compile, syntax checks
 make smoke      # a real headless GNOME Shell exercising every widget and theme
-make diagrams   # docs/diagrams from the code
+make diagrams   # the system design diagrams in docs/diagrams
 make links      # check links in the docs
 make nested     # a nested GNOME Shell window with this checkout (needs mutter-dev-bin)
 make reload     # link this checkout and re-enable (settings and schema changes)

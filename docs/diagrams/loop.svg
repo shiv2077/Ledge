@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="660" viewBox="0 0 1080 660" font-family="-apple-system, 'Segoe UI', 'Ubuntu', 'Helvetica Neue', Arial, sans-serif"><title>Ledge system design: the agent loop</title>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#8b949e"/></marker><marker id="r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#ff4d4d"/></marker></defs>
+<rect width="100%" height="100%" rx="14" fill="#0d1117"/>
+<path d="M685.6,163.0 Q740.7,167.9 798.5,207.2" fill="none" stroke="#8b949e" stroke-width="1.6" marker-end="url(#a)"/>
+<path d="M891.9,302.8 Q919.1,360.0 891.9,417.2" fill="none" stroke="#8b949e" stroke-width="1.6" marker-end="url(#a)"/>
+<path d="M798.5,512.8 Q740.7,552.1 685.6,557.0" fill="none" stroke="#8b949e" stroke-width="1.6" marker-end="url(#a)"/>
+<path d="M394.4,557.0 Q339.3,552.1 281.5,512.8" fill="none" stroke="#ff4d4d" stroke-width="1.6" marker-end="url(#r)"/>
+<path d="M188.1,417.2 Q160.9,360.0 188.1,302.8" fill="none" stroke="#ff4d4d" stroke-width="1.6" marker-end="url(#r)"/>
+<path d="M281.5,207.2 Q339.3,167.9 394.4,163.0" fill="none" stroke="#8b949e" stroke-width="1.6" marker-end="url(#a)"/>
+<rect x="400.0" y="104.0" width="280" height="92" rx="10" fill="#161b22" stroke="#30363d" stroke-width="1.2"/>
+<text x="540.0" y="138.2" text-anchor="middle" font-size="15" font-weight="600" fill="#e6edf3">You</text>
+<text x="540.0" y="156.7" text-anchor="middle" font-size="12" font-weight="400" fill="#8b949e">run several AI coding agents</text>
+<text x="540.0" y="174.1" text-anchor="middle" font-size="12" font-weight="400" fill="#8b949e">across terminals and worktrees</text>
+<rect x="729.1" y="209.0" width="280" height="92" rx="10" fill="#161b22" stroke="#30363d" stroke-width="1.2"/>
+<text x="869.1" y="243.2" text-anchor="middle" font-size="15" font-weight="600" fill="#e6edf3">Coding agents</text>
+<text x="869.1" y="261.7" text-anchor="middle" font-size="12" font-weight="400" fill="#8b949e">Claude Code · Codex · other CLIs</text>
+<text x="869.1" y="279.1" text-anchor="middle" font-size="12" font-weight="400" fill="#8b949e">they work, ask and finish</text>
+<rect x="729.1" y="419.0" width="280" height="92" rx="10" fill="#161b22" stroke="#30363d" stroke-width="1.2"/>
+<text x="869.1" y="453.2" text-anchor="middle" font-size="15" font-weight="600" fill="#e6edf3">Observe</text>
+<text x="869.1" y="471.7" text-anchor="middle" font-size="12" font-weight="400" fill="#8b949e">agent hooks · session files</text>
+<text x="869.1" y="489.1" text-anchor="middle" font-size="12" font-weight="400" fill="#8b949e">workspace panes · provider limits</text>
+<rect x="400.0" y="524.0" width="280" height="92" rx="10" fill="#161b22" stroke="#30363d" stroke-width="1.2"/>
+<text x="540.0" y="558.2" text-anchor="middle" font-size="15" font-weight="600" fill="#e6edf3">Understand</text>
+<text x="540.0" y="576.7" text-anchor="middle" font-size="12" font-weight="400" fill="#8b949e">one entry per agent · worktree</text>
+<text x="540.0" y="594.1" text-anchor="middle" font-size="12" font-weight="400" fill="#8b949e">clashes · waiting queue · pace</text>
+<rect x="70.9" y="419.0" width="280" height="92" rx="10" fill="#161b22" stroke="#ff4d4d" stroke-width="1.2"/>
+<text x="210.9" y="453.2" text-anchor="middle" font-size="15" font-weight="600" fill="#e6edf3">Surface</text>
+<text x="210.9" y="471.7" text-anchor="middle" font-size="12" font-weight="400" fill="#8b949e">lens · dot strip · dropdowns</text>
+<text x="210.9" y="489.1" text-anchor="middle" font-size="12" font-weight="400" fill="#8b949e">red when something needs you</text>
+<rect x="70.9" y="209.0" width="280" height="92" rx="10" fill="#161b22" stroke="#30363d" stroke-width="1.2"/>
+<text x="210.9" y="243.2" text-anchor="middle" font-size="15" font-weight="600" fill="#e6edf3">Act</text>
+<text x="210.9" y="261.7" text-anchor="middle" font-size="12" font-weight="400" fill="#8b949e">jump to the waiting agent</text>
+<text x="210.9" y="279.1" text-anchor="middle" font-size="12" font-weight="400" fill="#8b949e">approve, answer, or pace work</text>
+<text x="540" y="44" text-anchor="middle" font-size="13" font-weight="600" letter-spacing="3" fill="#e6edf3">LEDGE · SYSTEM DESIGN</text>
+<text x="540" y="66" text-anchor="middle" font-size="12" font-weight="400" letter-spacing="0" fill="#8b949e">A local loop between you and your coding agents</text>
+<text x="540" y="350" text-anchor="middle" font-size="12" font-weight="600" letter-spacing="1.5" fill="#8b949e">OBSERVE → UNDERSTAND</text>
+<text x="540" y="374" text-anchor="middle" font-size="12" font-weight="600" letter-spacing="1.5" fill="#ff4d4d">SURFACE → ACT</text>
+<text x="540" y="404" text-anchor="middle" font-size="11" font-weight="400" letter-spacing="0" fill="#8b949e">on your machine · no telemetry · no message text</text>
+</svg>

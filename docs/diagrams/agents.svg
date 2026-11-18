@@ -1,83 +1,71 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1818" height="324" viewBox="0 0 1818 324" font-family="Virgil, 'Comic Neue', 'Comic Sans MS', cursive" font-size="15"><title>Ledge agent radar</title>
-<defs><marker id="head" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#232A33"/></marker></defs>
-<rect width="1818" height="324" fill="#FFFFFF"/>
-<path d="M244.0,46.0 Q289.9,45.1 334.0,46.0" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round" marker-end="url(#head)"/>
-<path d="M444.0,68.0 Q444.2,75.2 444.0,82.0" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round" marker-end="url(#head)"/>
-<path d="M554.0,104.0 Q599.9,102.8 644.0,104.0" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round" marker-end="url(#head)"/>
-<path d="M244.0,162.0 Q443.1,160.1 644.0,162.0" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round" marker-end="url(#head)"/>
-<path d="M244.0,220.0 Q445.2,217.4 644.0,220.0" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round" marker-end="url(#head)"/>
-<path d="M244.0,278.0 Q441.4,280.6 644.0,278.0" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round" marker-end="url(#head)"/>
-<path d="M864.0,104.0 Q909.9,132.1 954.0,162.0" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round" marker-end="url(#head)"/>
-<path d="M864.0,162.0 Q909.9,160.4 954.0,162.0" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round" marker-end="url(#head)"/>
-<path d="M864.0,220.0 Q909.9,188.7 954.0,162.0" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round" marker-end="url(#head)"/>
-<path d="M864.0,278.0 Q909.9,217.0 954.0,162.0" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round" marker-end="url(#head)"/>
-<path d="M1174.0,162.0 Q1217.8,160.8 1264.0,162.0" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round" marker-end="url(#head)"/>
-<path d="M1174.0,220.0 Q1217.8,189.1 1264.0,162.0" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round" marker-end="url(#head)"/>
-<path d="M1484.0,162.0 Q1529.5,132.1 1574.0,104.0" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round" marker-end="url(#head)"/>
-<path d="M1484.0,162.0 Q1531.6,161.1 1574.0,162.0" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round" marker-end="url(#head)"/>
-<path d="M1484.0,162.0 Q1527.8,190.1 1574.0,220.0" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round" marker-end="url(#head)"/>
-<rect x="24" y="24" width="220" height="44" fill="#FCE7D2"/>
-<path d="M23.6,23.6 Q134.4,24.3 244.7,23.4 Q244.1,44.7 244.0,67.6 Q133.8,67.0 24.0,68.0 Q24.7,44.6 23.6,23.6" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round"/>
-<path d="M24.1,24.1 Q133.7,22.9 243.7,23.2 Q243.2,44.8 244.5,68.5 Q135.1,68.7 23.9,68.1 Q24.5,46.2 24.1,24.1" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round"/>
-<text x="134.0" y="51.0" text-anchor="middle" fill="#232A33">Claude Code hooks</text>
-<rect x="24" y="140" width="220" height="44" fill="#FCE7D2"/>
-<path d="M24.7,139.2 Q135.0,138.2 244.2,139.4 Q245.2,162.5 244.0,183.6 Q132.9,184.1 23.7,184.0 Q23.4,161.8 24.7,139.2" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round"/>
-<path d="M23.2,139.8 Q133.6,140.4 244.3,139.2 Q245.1,162.1 244.5,184.5 Q134.1,185.1 24.7,184.1 Q24.9,161.6 23.2,139.8" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round"/>
-<text x="134.0" y="167.0" text-anchor="middle" fill="#232A33">multi-agent workspace panes</text>
-<rect x="24" y="198" width="220" height="44" fill="#FCE7D2"/>
-<path d="M23.7,198.6 Q133.8,198.5 243.2,197.4 Q244.4,220.3 244.0,241.6 Q133.6,241.6 23.5,242.0 Q23.6,220.8 23.7,198.6" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round"/>
-<path d="M24.3,197.6 Q134.3,196.6 243.9,197.2 Q243.7,219.5 244.5,242.5 Q133.2,241.8 24.3,242.1 Q23.6,218.7 24.3,197.6" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round"/>
-<text x="134.0" y="225.0" text-anchor="middle" fill="#232A33">Claude / Codex session files</text>
-<rect x="24" y="256" width="220" height="44" fill="#FCE7D2"/>
-<path d="M24.2,256.4 Q133.4,257.0 243.8,255.4 Q243.6,278.0 244.0,299.6 Q134.4,298.8 23.3,300.0 Q24.1,277.0 24.2,256.4" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round"/>
-<path d="M23.9,255.4 Q132.7,255.1 243.4,255.2 Q244.7,276.9 244.5,300.5 Q134.7,301.0 24.0,300.1 Q23.7,277.6 23.9,255.4" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round"/>
-<text x="134.0" y="283.0" text-anchor="middle" fill="#232A33">running agent CLIs</text>
-<rect x="334" y="24" width="220" height="44" fill="#D7E3FC"/>
-<path d="M334.6,23.7 Q444.4,25.0 554.7,24.4 Q553.3,46.5 554.0,67.6 Q443.1,67.2 334.0,68.0 Q334.7,46.8 334.6,23.7" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round"/>
-<path d="M333.6,24.3 Q443.7,23.8 553.7,23.7 Q554.8,46.4 554.7,68.5 Q444.9,68.9 333.9,68.2 Q334.1,45.6 333.6,24.3" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round"/>
-<text x="444.0" y="51.0" text-anchor="middle" fill="#232A33">tools/ledge_agent.py</text>
-<rect x="334" y="82" width="220" height="44" fill="#E8ECF2"/>
-<path d="M333.6,81.5 Q443.3,83.0 553.7,82.4 Q552.7,104.2 554.0,125.6 Q443.9,124.6 333.9,126.0 Q334.4,104.8 333.6,81.5" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round"/>
-<path d="M334.7,82.1 Q444.4,82.3 553.2,81.7 Q553.3,103.9 554.7,126.5 Q444.0,125.6 333.5,126.2 Q335.2,105.1 334.7,82.1" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round"/>
-<text x="444.0" y="109.0" text-anchor="middle" fill="#232A33">~/.local/share/ledge/agents</text>
-<rect x="644" y="82" width="220" height="44" fill="#E2F5D8"/>
-<path d="M644.6,81.6 Q752.9,80.5 863.7,81.9 Q864.3,103.6 864.1,125.6 Q753.4,124.8 643.9,126.1 Q644.2,104.6 644.6,81.6" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round"/>
-<path d="M644.1,82.3 Q754.4,83.2 863.2,82.1 Q864.2,105.0 863.3,126.5 Q753.7,125.8 643.5,126.3 Q644.6,104.5 644.1,82.3" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round"/>
-<text x="754.0" y="109.0" text-anchor="middle" fill="#232A33">lib/agents/status.js</text>
-<rect x="644" y="140" width="220" height="44" fill="#E2F5D8"/>
-<path d="M643.6,139.4 Q755.0,139.0 864.2,139.9 Q863.6,161.4 864.1,183.6 Q754.1,184.5 643.7,184.1 Q643.8,162.8 643.6,139.4" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round"/>
-<path d="M643.7,140.1 Q753.6,139.8 864.3,140.1 Q862.8,162.4 863.3,184.5 Q753.6,185.5 644.7,184.3 Q644.8,161.0 643.7,140.1" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round"/>
-<text x="754.0" y="167.0" text-anchor="middle" fill="#232A33">lib/agents/workspace.js</text>
-<rect x="644" y="198" width="220" height="44" fill="#E2F5D8"/>
-<path d="M644.1,197.2 Q753.7,197.0 863.2,197.9 Q862.8,219.1 864.1,241.6 Q754.9,241.9 643.5,242.1 Q644.3,219.0 644.1,197.2" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round"/>
-<path d="M643.2,198.0 Q754.4,198.3 863.9,198.1 Q863.8,219.8 863.3,242.5 Q752.8,242.2 644.3,242.3 Q642.7,219.9 643.2,198.0" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round"/>
-<text x="754.0" y="225.0" text-anchor="middle" fill="#232A33">lib/agents/sessions.js</text>
-<rect x="644" y="256" width="220" height="44" fill="#E2F5D8"/>
-<path d="M644.7,256.6 Q753.3,255.5 863.8,255.9 Q864.4,276.8 864.1,299.6 Q753.2,299.2 643.3,300.1 Q643.1,278.6 644.7,256.6" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round"/>
-<path d="M644.3,255.8 Q752.7,256.7 863.4,256.1 Q862.4,277.3 863.3,300.5 Q754.3,301.3 644.0,300.3 Q643.6,276.8 644.3,255.8" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round"/>
-<text x="754.0" y="283.0" text-anchor="middle" fill="#232A33">lib/agents/proc.js</text>
-<rect x="954" y="140" width="220" height="44" fill="#D7E3FC"/>
-<path d="M954.6,139.5 Q1064.6,139.0 1174.2,139.3 Q1175.2,160.9 1174.2,183.6 Q1063.6,184.7 953.7,184.2 Q953.6,162.6 954.6,139.5" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round"/>
-<path d="M954.7,140.3 Q1063.6,140.5 1174.3,140.6 Q1174.4,161.6 1173.5,184.5 Q1063.5,183.3 954.7,184.4 Q955.2,163.4 954.7,140.3" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round"/>
-<text x="1064.0" y="167.0" text-anchor="middle" fill="#232A33">mergeAgents (by pid)</text>
-<rect x="954" y="198" width="220" height="44" fill="#D7E3FC"/>
-<path d="M953.6,197.3 Q1063.3,196.9 1173.2,197.3 Q1174.4,218.7 1174.2,241.6 Q1064.4,242.1 953.5,242.2 Q953.5,220.8 953.6,197.3" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round"/>
-<path d="M954.2,198.1 Q1064.4,199.2 1173.9,198.6 Q1173.0,221.5 1173.5,242.5 Q1065.0,242.4 954.3,242.4 Q955.3,219.8 954.2,198.1" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round"/>
-<text x="1064.0" y="225.0" text-anchor="middle" fill="#232A33">worktree, branch, collisions</text>
-<rect x="1264" y="140" width="220" height="44" fill="#E8ECF2"/>
-<path d="M1264.0,139.6 Q1374.8,139.9 1484.2,140.3 Q1484.4,162.7 1484.3,183.6 Q1373.1,184.9 1263.7,184.3 Q1262.8,161.9 1264.0,139.6" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round"/>
-<path d="M1264.1,140.5 Q1375.0,140.6 1484.3,139.5 Q1483.6,161.8 1483.7,184.5 Q1373.3,183.5 1264.7,184.5 Q1264.8,162.9 1264.1,140.5" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round"/>
-<text x="1374.0" y="167.0" text-anchor="middle" fill="#232A33">modules/agents.js</text>
-<rect x="1574" y="82" width="220" height="44" fill="#D7E3FC"/>
-<path d="M1574.5,81.9 Q1684.9,81.3 1793.7,81.8 Q1794.3,104.4 1794.4,125.6 Q1684.2,125.4 1573.9,126.4 Q1574.5,103.1 1574.5,81.9" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round"/>
-<path d="M1574.0,81.3 Q1683.6,80.8 1793.2,82.0 Q1794.3,103.6 1793.9,126.5 Q1683.0,126.4 1573.5,126.6 Q1573.1,105.0 1574.0,81.3" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round"/>
-<text x="1684.0" y="109.0" text-anchor="middle" fill="#232A33">strip: dot constellation</text>
-<rect x="1574" y="140" width="220" height="44" fill="#D7E3FC"/>
-<path d="M1573.5,139.7 Q1684.5,139.8 1794.2,139.8 Q1793.6,162.2 1794.4,183.6 Q1685.0,185.1 1573.7,184.4 Q1574.2,161.3 1573.5,139.7" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round"/>
-<path d="M1573.6,140.7 Q1685.0,139.1 1794.3,140.0 Q1792.9,161.0 1793.9,184.5 Q1685.3,183.6 1574.7,184.6 Q1574.4,162.3 1573.6,140.7" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round"/>
-<text x="1684.0" y="167.0" text-anchor="middle" fill="#232A33">card: waiting first, by tree</text>
-<rect x="1574" y="198" width="220" height="44" fill="#D7E3FC"/>
-<path d="M1574.0,197.5 Q1683.3,197.7 1793.2,197.8 Q1792.8,219.9 1794.4,241.6 Q1683.3,242.5 1573.5,242.4 Q1574.7,219.9 1574.0,197.5" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round"/>
-<path d="M1574.7,198.5 Q1683.4,197.6 1793.9,198.0 Q1793.9,220.9 1793.9,242.5 Q1684.4,242.8 1574.3,242.6 Q1575.3,221.6 1574.7,198.5" fill="none" stroke="#232A33" stroke-width="1.3" stroke-linecap="round"/>
-<text x="1684.0" y="225.0" text-anchor="middle" fill="#232A33">Super+Shift+N: raise</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="540" viewBox="0 0 1080 540" font-family="-apple-system, 'Segoe UI', 'Ubuntu', 'Helvetica Neue', Arial, sans-serif"><title>Ledge agent pipeline</title>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#8b949e"/></marker><marker id="r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#ff4d4d"/></marker></defs>
+<rect width="100%" height="100%" rx="14" fill="#0d1117"/>
+<rect x="28" y="70" width="244" height="440" rx="12" fill="#1f2630" fill-opacity="0.35" stroke="#30363d" stroke-dasharray="3 5"/>
+<rect x="288" y="70" width="244" height="440" rx="12" fill="#1f2630" fill-opacity="0.35" stroke="#30363d" stroke-dasharray="3 5"/>
+<rect x="548" y="70" width="244" height="440" rx="12" fill="#1f2630" fill-opacity="0.35" stroke="#30363d" stroke-dasharray="3 5"/>
+<rect x="808" y="70" width="244" height="440" rx="12" fill="#1f2630" fill-opacity="0.35" stroke="#30363d" stroke-dasharray="3 5"/>
+<path d="M262.0,161.0 L296.0,161.0" fill="none" stroke="#8b949e" stroke-width="1.6" marker-end="url(#a)"/>
+<path d="M262.0,253.0 L296.0,253.0" fill="none" stroke="#8b949e" stroke-width="1.6" marker-end="url(#a)"/>
+<path d="M262.0,345.0 L296.0,345.0" fill="none" stroke="#8b949e" stroke-width="1.6" marker-end="url(#a)"/>
+<path d="M262.0,437.0 L296.0,437.0" fill="none" stroke="#8b949e" stroke-width="1.6" marker-end="url(#a)"/>
+<path d="M522.0,161.0 Q540.0,198.0 556.0,198.0" fill="none" stroke="#8b949e" stroke-width="1.6" marker-end="url(#a)"/>
+<path d="M522.0,253.0 Q540.0,198.0 556.0,198.0" fill="none" stroke="#8b949e" stroke-width="1.6" marker-end="url(#a)"/>
+<path d="M522.0,345.0 Q540.0,198.0 556.0,198.0" fill="none" stroke="#8b949e" stroke-width="1.6" marker-end="url(#a)"/>
+<path d="M522.0,437.0 Q540.0,198.0 556.0,198.0" fill="none" stroke="#8b949e" stroke-width="1.6" marker-end="url(#a)"/>
+<path d="M670.0,248.0 L670.0,316.0" fill="none" stroke="#8b949e" stroke-width="1.6" marker-end="url(#a)"/>
+<path d="M782.0,368.0 Q800.0,168.0 816.0,168.0" fill="none" stroke="#ff4d4d" stroke-width="1.6" marker-end="url(#r)"/>
+<path d="M782.0,368.0 Q800.0,293.0 816.0,293.0" fill="none" stroke="#8b949e" stroke-width="1.6" marker-end="url(#a)"/>
+<path d="M782.0,368.0 Q800.0,418.0 816.0,418.0" fill="none" stroke="#8b949e" stroke-width="1.6" marker-end="url(#a)"/>
+<rect x="40.0" y="125.0" width="220" height="72" rx="10" fill="#161b22" stroke="#30363d" stroke-width="1.2"/>
+<text x="150.0" y="157.9" text-anchor="middle" font-size="15" font-weight="600" fill="#e6edf3">Agent hooks</text>
+<text x="150.0" y="176.4" text-anchor="middle" font-size="12" font-weight="400" fill="#8b949e">working · waiting · done</text>
+<rect x="40.0" y="217.0" width="220" height="72" rx="10" fill="#161b22" stroke="#30363d" stroke-width="1.2"/>
+<text x="150.0" y="249.9" text-anchor="middle" font-size="15" font-weight="600" fill="#e6edf3">Session files</text>
+<text x="150.0" y="268.4" text-anchor="middle" font-size="12" font-weight="400" fill="#8b949e">Claude Code and Codex</text>
+<rect x="40.0" y="309.0" width="220" height="72" rx="10" fill="#161b22" stroke="#30363d" stroke-width="1.2"/>
+<text x="150.0" y="341.9" text-anchor="middle" font-size="15" font-weight="600" fill="#e6edf3">Agent workspace</text>
+<text x="150.0" y="360.4" text-anchor="middle" font-size="12" font-weight="400" fill="#8b949e">panes running agents</text>
+<rect x="40.0" y="401.0" width="220" height="72" rx="10" fill="#161b22" stroke="#30363d" stroke-width="1.2"/>
+<text x="150.0" y="433.9" text-anchor="middle" font-size="15" font-weight="600" fill="#e6edf3">Running processes</text>
+<text x="150.0" y="452.4" text-anchor="middle" font-size="12" font-weight="400" fill="#8b949e">any agent CLI</text>
+<rect x="300.0" y="125.0" width="220" height="72" rx="10" fill="#161b22" stroke="#30363d" stroke-width="1.2"/>
+<text x="410.0" y="157.9" text-anchor="middle" font-size="15" font-weight="600" fill="#e6edf3">Status reader</text>
+<text x="410.0" y="176.4" text-anchor="middle" font-size="12" font-weight="400" fill="#8b949e">exact states</text>
+<rect x="300.0" y="217.0" width="220" height="72" rx="10" fill="#161b22" stroke="#30363d" stroke-width="1.2"/>
+<text x="410.0" y="249.9" text-anchor="middle" font-size="15" font-weight="600" fill="#e6edf3">Session reader</text>
+<text x="410.0" y="268.4" text-anchor="middle" font-size="12" font-weight="400" fill="#8b949e">estimated states</text>
+<rect x="300.0" y="309.0" width="220" height="72" rx="10" fill="#161b22" stroke="#30363d" stroke-width="1.2"/>
+<text x="410.0" y="341.9" text-anchor="middle" font-size="15" font-weight="600" fill="#e6edf3">Workspace reader</text>
+<text x="410.0" y="360.4" text-anchor="middle" font-size="12" font-weight="400" fill="#8b949e">read only, every few s</text>
+<rect x="300.0" y="401.0" width="220" height="72" rx="10" fill="#161b22" stroke="#30363d" stroke-width="1.2"/>
+<text x="410.0" y="433.9" text-anchor="middle" font-size="15" font-weight="600" fill="#e6edf3">Process scan</text>
+<text x="410.0" y="452.4" text-anchor="middle" font-size="12" font-weight="400" fill="#8b949e">shown as running</text>
+<rect x="560.0" y="150.0" width="220" height="96" rx="10" fill="#161b22" stroke="#30363d" stroke-width="1.2"/>
+<text x="670.0" y="177.5" text-anchor="middle" font-size="15" font-weight="600" fill="#e6edf3">Merge</text>
+<text x="670.0" y="196.0" text-anchor="middle" font-size="12" font-weight="400" fill="#8b949e">one entry per agent</text>
+<text x="670.0" y="213.4" text-anchor="middle" font-size="12" font-weight="400" fill="#8b949e">by process, session or folder</text>
+<text x="670.0" y="230.8" text-anchor="middle" font-size="12" font-weight="400" fill="#8b949e">most exact state wins</text>
+<rect x="560.0" y="320.0" width="220" height="96" rx="10" fill="#161b22" stroke="#30363d" stroke-width="1.2"/>
+<text x="670.0" y="347.5" text-anchor="middle" font-size="15" font-weight="600" fill="#e6edf3">Context</text>
+<text x="670.0" y="366.0" text-anchor="middle" font-size="12" font-weight="400" fill="#8b949e">git worktree and branch</text>
+<text x="670.0" y="383.4" text-anchor="middle" font-size="12" font-weight="400" fill="#8b949e">clash: 2+ active, same tree</text>
+<text x="670.0" y="400.8" text-anchor="middle" font-size="12" font-weight="400" fill="#8b949e">waiting queue, oldest first</text>
+<rect x="820.0" y="125.0" width="220" height="86" rx="10" fill="#161b22" stroke="#ff4d4d" stroke-width="1.2"/>
+<text x="930.0" y="156.2" text-anchor="middle" font-size="15" font-weight="600" fill="#e6edf3">Dot constellation</text>
+<text x="930.0" y="174.7" text-anchor="middle" font-size="12" font-weight="400" fill="#8b949e">white working · red waiting</text>
+<text x="930.0" y="192.1" text-anchor="middle" font-size="12" font-weight="400" fill="#8b949e">count in the strip</text>
+<rect x="820.0" y="250.0" width="220" height="86" rx="10" fill="#161b22" stroke="#30363d" stroke-width="1.2"/>
+<text x="930.0" y="281.2" text-anchor="middle" font-size="15" font-weight="600" fill="#e6edf3">Agents dropdown</text>
+<text x="930.0" y="299.7" text-anchor="middle" font-size="12" font-weight="400" fill="#8b949e">waiting first, then by tree</text>
+<text x="930.0" y="317.1" text-anchor="middle" font-size="12" font-weight="400" fill="#8b949e">click a row to jump</text>
+<rect x="820.0" y="375.0" width="220" height="86" rx="10" fill="#161b22" stroke="#30363d" stroke-width="1.2"/>
+<text x="930.0" y="406.2" text-anchor="middle" font-size="15" font-weight="600" fill="#e6edf3">Jump shortcut</text>
+<text x="930.0" y="424.7" text-anchor="middle" font-size="12" font-weight="400" fill="#8b949e">Super+Shift+N raises the</text>
+<text x="930.0" y="442.1" text-anchor="middle" font-size="12" font-weight="400" fill="#8b949e">agent that waited longest</text>
+<text x="540" y="40" text-anchor="middle" font-size="13" font-weight="600" letter-spacing="3" fill="#e6edf3">MULTIPLE AGENTS · PIPELINE</text>
+<text x="150" y="98" text-anchor="middle" font-size="11" font-weight="600" letter-spacing="1.5" fill="#8b949e">SIGNALS</text>
+<text x="410" y="98" text-anchor="middle" font-size="11" font-weight="600" letter-spacing="1.5" fill="#8b949e">COLLECT</text>
+<text x="670" y="98" text-anchor="middle" font-size="11" font-weight="600" letter-spacing="1.5" fill="#8b949e">UNDERSTAND</text>
+<text x="930" y="98" text-anchor="middle" font-size="11" font-weight="600" letter-spacing="1.5" fill="#8b949e">SURFACE</text>
 </svg>
