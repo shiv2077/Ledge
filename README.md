@@ -11,6 +11,8 @@
 
 ![The Ledge strip open under the top bar: Claude and Codex dials, the agent count, power, todos, GitHub and training](docs/screenshots/strip.webp)
 
+![Three dropdowns side by side: Claude Code limits and spend, the agents waiting on you, and Codex limits](docs/screenshots/hero.webp)
+
 </div>
 
 Ledge is a GNOME Shell extension for people who code with several AI agents at once. It lives in the top bar as a small lens beside the clock:
@@ -77,6 +79,106 @@ The hook records only the session id, folder, state, the agent's process id and 
 ```sh
 python3 ~/.local/share/ledge/tools/ledge_agent.py --id build-bot --tool mybot --state working --cwd .
 ```
+
+## Usage limits and spend
+
+![Claude Code dropdown: current session and weekly limits with pace, and spend for today and the last 7 days by project](docs/screenshots/claude.webp)
+
+**Claude Code.** Each limit window is a dotted bar with its reset time and pace, such as "17% ahead of pace". Below it is the estimated spend today and over 7 days, per project, read from your local transcripts at API list prices.
+
+![Codex dropdown: monthly limit with pace and spend](docs/screenshots/codex.webp)
+
+**Codex.** The same view for Codex limits.
+
+A dial turns red when little is left. Extra sign-ins such as `~/.claude-work` or `~/.codex-side` get their own dials.
+
+## Everything else in the strip
+
+![Power, Todo, GitHub and Training dropdowns](docs/screenshots/widgets.webp)
+
+| Widget | What it does |
+| --- | --- |
+| **Power** (top left) | Shows the active power profile; click another to switch |
+| **Todo** (top right) | Type and press Enter to add; tick to complete |
+| **GitHub** (bottom left) | Review requests, your open pull requests and CI for repositories you watch, through the `gh` CLI |
+| **Training** (bottom right) | Live epoch and loss for runs that report with `tools/ledge_status.py`, and a notice when one finishes, crashes or stalls |
+
+Local models (Ollama, LM Studio, llama.cpp) and the GitHub Copilot quota can be switched on in Preferences.
+
+## System design
+
+![Ledge system design: you, your coding agents, observe, understand, surface, act](docs/diagrams/loop.svg)
+
+Ledge closes one loop between you and your agents:
+
+| Step | What happens |
+| --- | --- |
+| **You → Coding agents** | You start several agents across terminals and worktrees. They work, ask for permission or input, and finish |
+| **Observe** | Ledge reads the signals agents already leave: hook events, session files, workspace panes, running processes and provider usage limits. Each source has its own switch, and every read runs in the background with a timeout |
+| **Understand** | Signals become one entry per agent. Ledge adds each agent's worktree and branch, flags clashes, orders who has waited longest, and works out pace and spend |
+| **Surface** | The lens, the dot strip and the dropdowns show it. Red appears only when something needs you |
+| **Act** | You jump to the waiting agent, approve or answer it, or pace your work. The agents carry on and the loop repeats |
+
+Everything stays on your machine. More detail is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [DECISIONS.md](DECISIONS.md) and [docs/TESTING.md](docs/TESTING.md). Both diagrams have an editable Excalidraw file beside them in [`docs/diagrams/`](docs/diagrams).
+
+## Alerts
+
+| Event | What happens |
+| --- | --- |
+| A coding session finishes | The strip opens for **Peek** seconds; the **Finished sound** plays if sounds are on |
+| A session waits on you | The lens flashes red, its dot blinks red, and the strip opens; the **Waiting sound** plays if sounds are on |
+| A usage window reaches 80 % or 100 % | One notification each, re-armed when the window resets |
+
+Do Not Disturb silences sounds and peeks. Peeks also stay away from fullscreen windows. Mute limit alerts per provider in preferences.
+
+## Appearance
+
+| Theme | Description |
+| --- | --- |
+| **Midnight** | Matte black. The default. |
+| **Graphite** | Soft dark grey. |
+| **Nord**, **Catppuccin Mocha**, **Dracula** | The well-known palettes. |
+| **Ocean** | Deep navy. |
+| **Snow** | Light. |
+| **System** | Follows Ubuntu's light or dark style and your accent colour, live. |
+| **Custom** | Your own colours and opacity. |
+
+Every theme keeps text at 4.5:1 contrast and marks at 3:1 against any background it can land on. Tests enforce this for every built-in theme.
+
+## Installation
+
+**Requirements:** GNOME Shell 50 (Ubuntu 26.04), Python 3 and `glib-compile-schemas`, which ship with Ubuntu Desktop. Optional: `gh` for GitHub and Copilot; Ollama, LM Studio or llama.cpp for local models.
+
+### One command
+
+```sh
+git clone https://github.com/shiv2077/Ledge.git ~/Ledge && make -C ~/Ledge install
+```
+
+Log out and back in (Wayland only picks up new extensions at login), then turn it on:
+
+```sh
+gnome-extensions enable ledge@shiv2077
+```
+
+### Let your coding agent set it up
+
+Paste this into Claude Code, Codex or any coding agent:
+
+```text
+Install the Ledge GNOME Shell extension from https://github.com/shiv2077/Ledge.
+1. Clone it to ~/Ledge and run `make install` there.
+2. Run `make agent-tools`, then add the hooks from tools/hooks/claude-code-settings.json
+   to ~/.claude/settings.json. Back that file up first and keep every hook already in it.
+3. Tell me to log out and back in, and after that run `gnome-extensions enable ledge@shiv2077`.
+Do not edit any other settings.
+```
+
+### From extensions.gnome.org
+
+Ledge is submitted to [extensions.gnome.org](https://extensions.gnome.org/extension/11824/ledge/) and waiting for review. Once approved, install it with one click there or from the Extension Manager app.
+
+`make package` writes a shareable zip to `dist/ledge@shiv2077.shell-extension.zip`.
 
 ## Usage limits and spend
 
