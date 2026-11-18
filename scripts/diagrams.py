@@ -28,6 +28,8 @@ SOURCE_PATTERNS = [
     (r"'nvidia-smi'", lambda m: 'nvidia-smi'),
     (r"PowerProfiles|net\.hadess|UPower", lambda m: 'power-profiles-daemon (D-Bus)'),
     (r"FileMonitor|monitor_directory", lambda m: '~/.local/share/ledge/runs'),
+    (r"lib/agents/([a-z]+)\.js", lambda m: {'status': 'hook status files', 'herdr': 'herdr api snapshot',
+        'sessions': 'Claude / Codex sessions', 'proc': '/proc agent scan'}.get(m.group(1), m.group(1))),
     (r"todos\.json", lambda m: '~/.local/share/ledge/todos.json'),
 ]
 
@@ -63,6 +65,24 @@ def label_of(name: str) -> str:
     return {'GithubModule': 'GitHub', 'CopilotModule': 'Copilot'}.get(name, re.sub(r'Module$', '', name))
 
 
+def wobble(a: float, b: float, amount: float = 1.6) -> float:
+    """A small offset that depends only on its inputs, so output is stable."""
+    return ((int(a * 7 + b * 13) % 17) / 17 - 0.5) * amount
+
+
+def sketch_rect(x: float, y: float, w: float, h: float, pass_: int) -> str:
+    """A hand-drawn rectangle: corners nudged, edges slightly bowed."""
+    k = pass_ + 1
+    pts = [(x + wobble(x, y * k), y + wobble(y, x * k)), (x + w + wobble(w, y * k), y + wobble(x * k, w)),
+           (x + w + wobble(h, x * k), y + h + wobble(w * k, h)), (x + wobble(y * k, h), y + h + wobble(h * k, x))]
+    d = f'M{pts[0][0]:.1f},{pts[0][1]:.1f}'
+    for i in range(1, 5):
+        (ax, ay), (bx, by) = pts[i - 1], pts[i % 4]
+        cx, cy = (ax + bx) / 2 + wobble(ax, by * k, 2.4), (ay + by) / 2 + wobble(ay * k, bx, 2.4)
+        d += f' Q{cx:.1f},{cy:.1f} {bx:.1f},{by:.1f}'
+    return d
+
+
 class Scene:
     def __init__(self) -> None:
         self.boxes: list[dict] = []
@@ -82,6 +102,14 @@ class Scene:
         return width, height
 
     def _ends(self, a: int, b: int) -> tuple[float, float, float, float]:
+        # A box to the left: leave from the left edge.
+        if self.boxes[b]['x'] < self.boxes[a]['x']:
+            return (self.boxes[a]['x'], self.boxes[a]['y'] + BOX_H / 2,
+                    self.boxes[b]['x'] + BOX_W, self.boxes[b]['y'] + BOX_H / 2)
+        # Boxes in one column connect bottom to top.
+        if self.boxes[a]['x'] == self.boxes[b]['x']:
+            x = self.boxes[a]['x'] + BOX_W / 2
+            return x, self.boxes[a]['y'] + BOX_H, x, self.boxes[b]['y']
         x1 = self.boxes[a]['x'] + BOX_W
         y1 = self.boxes[a]['y'] + BOX_H / 2
         x2 = self.boxes[b]['x']
@@ -91,16 +119,21 @@ class Scene:
     def svg(self, title: str) -> str:
         width, height = self.size()
         parts = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}" '
-                 f'font-family="sans-serif" font-size="{FONT}"><title>{escape(title)}</title>',
+                 f'font-family="Virgil, \'Comic Neue\', \'Comic Sans MS\', cursive" font-size="{FONT}"><title>{escape(title)}</title>',
                  '<defs><marker id="head" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto">'
                  f'<path d="M0,0 L10,5 L0,10 z" fill="{COLORS["stroke"]}"/></marker></defs>',
                  f'<rect width="{width}" height="{height}" fill="#FFFFFF"/>']
         for a, b in self.arrows:
             x1, y1, x2, y2 = self._ends(a, b)
-            parts.append(f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" stroke="{COLORS["stroke"]}" stroke-width="1.2" marker-end="url(#head)"/>')
+            mx, my = (x1 + x2) / 2 + wobble(x1, y2, 6), (y1 + y2) / 2 + wobble(y1, x2, 6)
+            parts.append(f'<path d="M{x1:.1f},{y1:.1f} Q{mx:.1f},{my:.1f} {x2:.1f},{y2:.1f}" fill="none" stroke="{COLORS["stroke"]}" '
+                         f'stroke-width="1.3" stroke-linecap="round" marker-end="url(#head)"/>')
         for b in self.boxes:
-            parts.append(f'<rect x="{b["x"]}" y="{b["y"]}" width="{BOX_W}" height="{BOX_H}" fill="{COLORS[b["kind"]]}" '
-                         f'stroke="{COLORS["stroke"]}" stroke-width="1"/>')
+            # Excalidraw-style: a fill, then two slightly wobbly outlines.
+            parts.append(f'<rect x="{b["x"]}" y="{b["y"]}" width="{BOX_W}" height="{BOX_H}" fill="{COLORS[b["kind"]]}"/>')
+            for pass_ in range(2):
+                parts.append(f'<path d="{sketch_rect(b["x"], b["y"], BOX_W, BOX_H, pass_)}" fill="none" '
+                             f'stroke="{COLORS["stroke"]}" stroke-width="1.3" stroke-linecap="round"/>')
             parts.append(f'<text x="{b["x"] + BOX_W / 2}" y="{b["y"] + BOX_H / 2 + FONT / 3}" text-anchor="middle" '
                          f'fill="{COLORS["stroke"]}">{escape(b["text"])}</text>')
         parts.append('</svg>\n')
@@ -111,14 +144,14 @@ class Scene:
         for i, b in enumerate(self.boxes):
             elements.append({'type': 'rectangle', 'id': f'box{i}', 'x': b['x'], 'y': b['y'], 'width': BOX_W, 'height': BOX_H,
                              'strokeColor': COLORS['stroke'], 'backgroundColor': COLORS[b['kind']], 'fillStyle': 'solid',
-                             'strokeWidth': 1, 'roughness': 0, 'opacity': 100, 'angle': 0, 'seed': i + 1, 'version': 1,
+                             'strokeWidth': 1, 'roughness': 1, 'opacity': 100, 'angle': 0, 'seed': i + 1, 'version': 1,
                              'versionNonce': i + 1, 'isDeleted': False, 'groupIds': [], 'boundElements': [{'type': 'text', 'id': f'text{i}'}],
                              'roundness': None, 'locked': False, 'link': None, 'updated': 1, 'frameId': None, 'strokeStyle': 'solid'})
             elements.append({'type': 'text', 'id': f'text{i}', 'x': b['x'] + 8, 'y': b['y'] + BOX_H / 2 - FONT * 0.65,
                              'width': BOX_W - 16, 'height': FONT * 1.3, 'text': b['text'], 'originalText': b['text'],
-                             'fontSize': FONT, 'fontFamily': 2, 'textAlign': 'center', 'verticalAlign': 'middle', 'containerId': f'box{i}',
+                             'fontSize': FONT, 'fontFamily': 1, 'textAlign': 'center', 'verticalAlign': 'middle', 'containerId': f'box{i}',
                              'strokeColor': COLORS['stroke'], 'backgroundColor': 'transparent', 'fillStyle': 'solid', 'strokeWidth': 1,
-                             'roughness': 0, 'opacity': 100, 'angle': 0, 'seed': 1000 + i, 'version': 1, 'versionNonce': 1000 + i,
+                             'roughness': 1, 'opacity': 100, 'angle': 0, 'seed': 1000 + i, 'version': 1, 'versionNonce': 1000 + i,
                              'isDeleted': False, 'groupIds': [], 'boundElements': None, 'roundness': None, 'locked': False,
                              'link': None, 'updated': 1, 'frameId': None, 'strokeStyle': 'solid', 'lineHeight': 1.25, 'autoResize': True})
         for j, (a, b) in enumerate(self.arrows):
@@ -127,7 +160,7 @@ class Scene:
                              'points': [[0, 0], [x2 - x1, y2 - y1]], 'startBinding': {'elementId': f'box{a}', 'focus': 0, 'gap': 1},
                              'endBinding': {'elementId': f'box{b}', 'focus': 0, 'gap': 1}, 'endArrowhead': 'arrow', 'startArrowhead': None,
                              'strokeColor': COLORS['stroke'], 'backgroundColor': 'transparent', 'fillStyle': 'solid', 'strokeWidth': 1,
-                             'roughness': 0, 'opacity': 100, 'angle': 0, 'seed': 2000 + j, 'version': 1, 'versionNonce': 2000 + j,
+                             'roughness': 1, 'opacity': 100, 'angle': 0, 'seed': 2000 + j, 'version': 1, 'versionNonce': 2000 + j,
                              'isDeleted': False, 'groupIds': [], 'boundElements': None, 'roundness': None, 'locked': False,
                              'link': None, 'updated': 1, 'frameId': None, 'strokeStyle': 'solid', 'lastCommittedPoint': None})
         scene = {'type': 'excalidraw', 'version': 2, 'source': 'scripts/diagrams.py', 'elements': elements,
@@ -136,25 +169,32 @@ class Scene:
 
 
 def architecture() -> Scene:
+    """Placements on the left of the host, modules on its right, each one
+    level with its own sources."""
     scene = Scene()
-    host = scene.box(0, 3, 'extension.js (host)', 'host')
-    rail = scene.box(1, 1, 'lib/rail.js (edge)', 'place')
-    panel = scene.box(1, 2, 'lib/panel.js (top bar)', 'place')
-    strip = scene.box(1, 4, 'lib/strip.js (chips)', 'place')
-    deck = scene.box(1, 5, 'lib/deck.js (deck)', 'place')
-    for target in (rail, panel):
-        scene.arrow(host, target)
-    for placement in (rail, panel):
-        scene.arrow(placement, strip)
-        scene.arrow(placement, deck)
-    source_rows: dict[str, int] = {}
-    for row, (name, path) in enumerate(module_order()):
+    order = module_order()
+    rows: list[tuple[str, str, int, list[str]]] = []
+    next_row = 0
+    seen: set[str] = set()
+    for name, path in order:
+        own = [source for source in sources(path) if source not in seen]
+        seen.update(own)
+        rows.append((name, path, next_row, sources(path)))
+        next_row += max(1, len(own))
+    host = scene.box(1, (next_row - 1) / 2, 'extension.js (host)', 'host')
+    places = ['lib/shelf.js (lens + strip)', 'lib/rail.js (edge rail)', 'lib/panel.js (top bar chips)', 'lib/deck.js (dropdown)']
+    for i, label in enumerate(places):
+        scene.arrow(host, scene.box(0, (next_row - len(places)) / 2 + i, label, 'place'))
+    sources_at: dict[str, int] = {}
+    for name, path, row, own in rows:
         module = scene.box(2, row, f'{label_of(name)} · {Path(path).name}', 'module')
         scene.arrow(host, module)
-        for source in sources(path):
-            if source not in source_rows:
-                source_rows[source] = scene.box(3, len(source_rows), source, 'source')
-            scene.arrow(module, source_rows[source])
+        offset = 0
+        for source in own:
+            if source not in sources_at:
+                sources_at[source] = scene.box(3, row + offset, source, 'source')
+                offset += 1
+            scene.arrow(module, sources_at[source])
     return scene
 
 
@@ -181,9 +221,36 @@ def readers() -> Scene:
     return scene
 
 
+def agents() -> Scene:
+    """Where agents come from, how they are merged, and where they show."""
+    scene = Scene()
+    hooks = scene.box(0, 0, 'Claude Code hooks', 'source')
+    herdr = scene.box(0, 2, 'Herdr panes', 'source')
+    sessions = scene.box(0, 3, 'Claude / Codex session files', 'source')
+    procs = scene.box(0, 4, 'running agent CLIs', 'source')
+    writer = scene.box(1, 0, 'tools/ledge_agent.py', 'place')
+    files = scene.box(1, 1, '~/.local/share/ledge/agents', 'host')
+    status = scene.box(2, 1, 'lib/agents/status.js', 'module')
+    herdr_js = scene.box(2, 2, 'lib/agents/herdr.js', 'module')
+    sessions_js = scene.box(2, 3, 'lib/agents/sessions.js', 'module')
+    proc_js = scene.box(2, 4, 'lib/agents/proc.js', 'module')
+    merge = scene.box(3, 2, 'mergeAgents (by pid)', 'place')
+    trees = scene.box(3, 3, 'worktree, branch, collisions', 'place')
+    module = scene.box(4, 2, 'modules/agents.js', 'host')
+    shelf = scene.box(5, 1, 'strip: dot constellation', 'place')
+    card = scene.box(5, 2, 'card: waiting first, by tree', 'place')
+    jump = scene.box(5, 3, 'Super+Shift+N: raise', 'place')
+    for a, b in [(hooks, writer), (writer, files), (files, status), (herdr, herdr_js), (sessions, sessions_js),
+                 (procs, proc_js), (status, merge), (herdr_js, merge), (sessions_js, merge), (proc_js, merge),
+                 (merge, module), (trees, module), (module, shelf), (module, card), (module, jump)]:
+        scene.arrow(a, b)
+    return scene
+
+
 def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
-    diagrams = {'architecture': ('Ledge architecture', architecture()), 'readers': ('Ledge readers', readers())}
+    diagrams = {'architecture': ('Ledge architecture', architecture()), 'readers': ('Ledge readers', readers()),
+                'agents': ('Ledge agent radar', agents())}
     for name, (title, scene) in diagrams.items():
         (OUT / f'{name}.svg').write_text(scene.svg(title))
         (OUT / f'{name}.excalidraw').write_text(scene.excalidraw())

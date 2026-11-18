@@ -59,6 +59,8 @@ Hover any of them and its detail drops down. Everything is local and asynchronou
 | **Herdr** | Every agent in your Herdr panes, with exact states and pane focus. Read with `herdr api snapshot` only while Herdr's socket exists | listing yes; pane focus not yet |
 | **Running processes** | Agent command-line tools found in `/proc` (claude, codex, opencode, pi, amp, gemini, aider), shown as *running* only | yes |
 
+![Agent radar: sources, merge, and where agents show](docs/diagrams/agents.svg)
+
 The same agent seen by several sources shows once. The state comes from the most exact source: a hook, then Herdr, then a session guess, then a bare process. Each source has its own switch under Preferences → Agents.
 
 **Exact Claude Code states with hooks:**
