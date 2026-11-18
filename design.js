@@ -93,21 +93,24 @@ export const dotOrder = (column, row) => ((column * 7 + row * 13) % 17) / 17;
 // interlocking arcs. Returns [[x, y], ...].
 export function logoDots(id) {
     const points = [];
+    // Dots this far apart (in radius units) read as a continuous stroke.
+    const step = 0.16;
     if (id === 'claude') {
-        points.push([0, 0]);
-        for (let i = 0; i < 6; i++) points.push([0.22 * Math.cos(i * Math.PI / 3), 0.22 * Math.sin(i * Math.PI / 3)]);
-        for (let i = 0; i < 12; i++) {
-            const angle = i * Math.PI / 6 - Math.PI / 2;
-            const radii = i % 2 ? [0.5, 0.75] : [0.5, 0.75, 1];
-            for (const r of radii) points.push([r * Math.cos(angle), r * Math.sin(angle)]);
-        }
+        // The spark: twelve rays of uneven length from a small open centre.
+        const lengths = [1, 0.68, 0.9, 0.62, 1, 0.72, 0.86, 0.6, 1, 0.7, 0.94, 0.64];
+        lengths.forEach((length, i) => {
+            const angle = i * Math.PI / 6 - Math.PI / 2 + 0.12;
+            for (let r = 0.22; r <= length + 1e-6; r += step) points.push([r * Math.cos(angle), r * Math.sin(angle)]);
+        });
     } else if (id === 'codex') {
+        // The knot: six arcs, each turned 60 degrees, interlocking round the centre.
         for (let k = 0; k < 6; k++) {
             const t = k * Math.PI / 3;
-            const [cx, cy] = [0.36 * Math.cos(t), 0.36 * Math.sin(t)];
-            for (let j = 0; j < 5; j++) {
-                const a = t + Math.PI * (0.5 + j * 0.2);
-                points.push([cx + 0.6 * Math.cos(a), cy + 0.6 * Math.sin(a)]);
+            const [cx, cy, radius] = [0.42 * Math.cos(t), 0.42 * Math.sin(t), 0.5];
+            const count = Math.round(radius * Math.PI * 0.8 / step);
+            for (let j = 0; j <= count; j++) {
+                const a = t + Math.PI * (0.5 + 0.8 * j / count);
+                points.push([cx + radius * Math.cos(a), cy + radius * Math.sin(a)]);
             }
         }
     }
@@ -117,7 +120,7 @@ export function logoDots(id) {
 export const SHELF = {
     lensWidth: 40, lensTrace: 14, lensRadius: 9, lensMargin: 4,
     dot: 4, dotGap: 2, barDots: 12, barDot: 4, barGap: 3, gaugeWidth: 96,
-    flare: 14, figDot: 3, figGap: 1, iconDot: 2.5, iconGap: 1, dial: {size: 34, dots: 28, dot: 2}, logoDot: 1.7, logoRadius: 12.5, cardRadius: 8, cellGap: 4, divider: 3, reveal: 520, stagger: 70, low: 0.2, scan: 1400,
+    flare: 14, figDot: 3, figGap: 1, iconDot: 2.4, iconGap: 1.2, dial: {size: 34, dots: 28, dot: 2}, logoDot: 1.6, logoRadius: 13, cardRadius: 8, cellGap: 4, divider: 3, reveal: 520, stagger: 70, low: 0.2, scan: 1400,
     radius: 14, padding: 16, gap: 14, sheetGap: 6, itemRadius: 12,
     tube: {width: 28, height: 78, wall: 1.5, wave: 2.2, waveLength: 7, speed: 2.6, still: 0.6},
     tubeColumn: 62, statWidth: 168, statHeight: 30, detailWidth: 520,

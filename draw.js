@@ -323,10 +323,12 @@ export function drawDial(cr, cx, cy, radius, count, dot, fraction, lit, off, rev
 // A 7 x 7 dot icon (rows of seven bits) with its top left at (x, y).
 export function drawDotIcon(cr, rows, x, y, dot, gap, color) {
     const [r, g, b] = rgba(color);
+    // Round dots, like the marks and the dials.
     rows.forEach((bits, row) => {
         for (let c = 0; c < 7; c++) {
             if (!(bits & (1 << (6 - c)))) continue;
-            cr.rectangle(x + c * (dot + gap), y + row * (dot + gap), dot, dot);
+            cr.newSubPath();
+            cr.arc(x + c * (dot + gap) + dot / 2, y + row * (dot + gap) + dot / 2, dot / 2, 0, 2 * Math.PI);
         }
     });
     cr.setSourceRGBA(r, g, b, 1);
