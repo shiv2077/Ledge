@@ -11,8 +11,6 @@
 
 ![The Ledge strip open under the top bar: Claude and Codex dials, the agent count, power, todos, GitHub and training](docs/screenshots/strip.webp)
 
-![Three dropdowns side by side: Claude Code limits and spend, the agents waiting on you, and Codex limits](docs/screenshots/hero.webp)
-
 </div>
 
 Ledge is a GNOME Shell extension for people who code with several AI agents at once. It lives in the top bar as a small lens beside the clock:
