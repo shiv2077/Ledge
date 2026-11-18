@@ -1,6 +1,7 @@
 import Adw from 'gi://Adw';
 import Gdk from 'gi://Gdk';
 import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk';
 import {ExtensionPreferences} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 import {parseRepos} from './model.js';
@@ -99,6 +100,35 @@ export default class LedgePreferences extends ExtensionPreferences {
         mutedRow.connect('changed', () => settings.set_strv('alerts-muted',
             mutedRow.text.split(',').map(id => id.trim()).filter(Boolean)));
         alerts.add(mutedRow);
+
+        const agents = group('Agents', 'Every coding agent at a glance. Super+Shift+N jumps to the one that has waited longest.');
+        addSwitch(agents, 'agents', 'Agents', 'Shows working, waiting and idle agents, grouped by worktree.');
+        addSwitch(agents, 'agents-status', 'Hook status files', 'Exact states from Claude Code hooks or any script using tools/ledge_agent.py.');
+        addSwitch(agents, 'agents-herdr', 'Herdr', 'Agents in Herdr panes, read with herdr api snapshot when Herdr is running.');
+        addSwitch(agents, 'agents-claude', 'Claude Code sessions', 'States guessed from session files when no hook reports them.');
+        addSwitch(agents, 'agents-codex', 'Codex sessions', 'States guessed from Codex session files.');
+        addSwitch(agents, 'agents-processes', 'Running agent tools', 'Agent command-line tools found among your processes; shown as running only.');
+        // Read only: Ledge never edits another tool's settings.
+        const hooks = new Adw.ActionRow({title: 'Claude Code hooks', subtitle: 'Not checked yet'});
+        const check = new Gtk.Button({label: 'Check', valign: Gtk.Align.CENTER});
+        check.connect('clicked', () => {
+            const file = Gio.File.new_for_path(`${GLib.get_home_dir()}/.claude/settings.json`);
+            file.load_contents_async(null, (f, result) => {
+                let text = '';
+                try { text = new TextDecoder().decode(f.load_contents_finish(result)[1]); } catch { text = ''; }
+                const events = ['UserPromptSubmit', 'Notification', 'Stop', 'SessionEnd'];
+                let missing = events;
+                try {
+                    const hooksConfig = JSON.parse(text).hooks ?? {};
+                    missing = events.filter(e => !JSON.stringify(hooksConfig[e] ?? '').includes('ledge_agent.py'));
+                } catch { missing = events; }
+                hooks.subtitle = !text ? 'No ~/.claude/settings.json found'
+                    : missing.length ? `Missing: ${missing.join(', ')}. Copy tools/hooks/claude-code-settings.json into it.`
+                        : 'All four hooks report to Ledge';
+            });
+        });
+        hooks.add_suffix(check);
+        agents.add(hooks);
 
         addSwitch(group('Power'), 'power', 'Power profile', 'Shows and switches the power-profiles-daemon profile.');
 

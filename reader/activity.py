@@ -496,6 +496,7 @@ def _claude_session(
     return {
         "id": session_id,
         "pid": int(pid_number),
+        "cwd": cwd[:4096],
         "name": name,
         "detail": detail,
         "state": state,

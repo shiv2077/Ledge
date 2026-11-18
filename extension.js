@@ -16,10 +16,11 @@ import {TodoModule} from './modules/todo.js';
 import {ModelsModule} from './modules/models.js';
 import {GithubModule} from './modules/github.js';
 import {CopilotModule} from './modules/copilot.js';
+import {AgentsModule} from './modules/agents.js';
 import {TrainingModule} from './modules/training.js';
 
 // Chip order.
-const MODULES = [...USAGE_MODULES, PowerModule, TodoModule, ModelsModule, GithubModule, CopilotModule, TrainingModule];
+const MODULES = [...USAGE_MODULES, AgentsModule, PowerModule, TodoModule, ModelsModule, GithubModule, CopilotModule, TrainingModule];
 
 // Keys that move Ledge to another placement; the old one is torn down.
 const PLACEMENT_KEYS = ['placement', 'panel-box', 'panel-position'];
@@ -60,6 +61,8 @@ export default class Ledge extends Extension {
         });
         Main.wm.addKeybinding('toggle-notch', this._settings, Meta.KeyBindingFlags.NONE,
             Shell.ActionMode.NORMAL, () => this._placement.toggle());
+        Main.wm.addKeybinding('next-waiting', this._settings, Meta.KeyBindingFlags.NONE,
+            Shell.ActionMode.NORMAL, () => this._modules.get('agents')?.raiseNext());
         this._syncModules();
         this._placement.update(this._cells());
         this._placement.settingsChanged();
@@ -150,6 +153,7 @@ export default class Ledge extends Extension {
         if (this._changeIdle) GLib.Source.remove(this._changeIdle);
         this._changeIdle = 0;
         Main.wm.removeKeybinding('toggle-notch');
+        Main.wm.removeKeybinding('next-waiting');
         this._settings.disconnect(this._settingsSignal);
         this._placement.destroy();
         this._appearance.destroy();

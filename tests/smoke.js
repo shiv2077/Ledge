@@ -16,7 +16,7 @@ const output = GLib.getenv('LEDGE_SMOKE_OUTPUT');
 const delay = ms => new Promise(resolve => GLib.timeout_add(GLib.PRIORITY_DEFAULT, ms, () => { resolve(); return GLib.SOURCE_REMOVE; }));
 const assert = (value, message) => { if (!value) throw new Error(message); };
 const EDGES = ['right', 'top', 'left', 'bottom'];
-const IDS = ['claude', 'cursor', 'codex', 'power', 'todo', 'models', 'github', 'copilot', 'training'];
+const IDS = ['claude', 'cursor', 'codex', 'agents', 'power', 'todo', 'models', 'github', 'copilot', 'training'];
 const PAD = 48;
 const checks = [];
 const crops = {};
@@ -494,6 +494,10 @@ export default class Smoke extends Ledge {
     // Top bar placement: one status area button with the strip, the deck in
     // its menu flush under the bar, aligned to the open chip.
     async checkPanel(pointer, keyboard) {
+        // The chip strip is the old top bar layout; the agents cell is tested in the shelf.
+        this._settings.set_boolean('agents', false);
+        await delay(300);
+        const PIDS = IDS.filter(id => id !== 'agents');
         const move = (x, y) => pointer.notify_absolute_motion(GLib.get_monotonic_time(), x, y);
         const click = () => {
             pointer.notify_button(GLib.get_monotonic_time(), Clutter.BUTTON_PRIMARY, Clutter.ButtonState.PRESSED);
@@ -516,13 +520,13 @@ export default class Smoke extends Ledge {
         assert(Main.panel.statusArea.ledge === P.button, 'Top bar mode adds one status area button');
         const centreBox = Main.panel._centerBox.get_children();
         assert(centreBox.indexOf(P.button.container) === centreBox.indexOf(Main.panel.statusArea.dateMenu.container) + 1, 'Chips sit right after the clock');
-        assert(P.strip.chips.size === IDS.length && [...P.strip.chips.values()].every(c => c.actor.height === Main.panel.height && c.actor.width === CHIP.panelWidth),
+        assert(P.strip.chips.size === PIDS.length && [...P.strip.chips.values()].every(c => c.actor.height === Main.panel.height && c.actor.width === CHIP.panelWidth),
             `Every module has a bar-height ${CHIP.panelWidth} px chip, got ${[...P.strip.chips.values()].map(c => `${c.actor.width}x${c.actor.height}`)}; panel ${Main.panel.height}`);
         const clock = Main.panel.statusArea.dateMenu.container;
         const clockCentre = clock.get_transformed_position()[0] + clock.width / 2;
         assert(Math.abs(clockCentre - Main.panel.width / 2) <= 2, `The clock stays centred, at ${clockCentre} of ${Main.panel.width}`);
         const separators = P.strip.actor.get_children().filter(c => c.has_style_class_name('ledge-separator'));
-        assert(separators.length === IDS.length - 1 && separators.every(s => s.width === 1), 'Chips are separated by 1 px hairlines');
+        assert(separators.length === PIDS.length - 1 && separators.every(s => s.width === 1), 'Chips are separated by 1 px hairlines');
         const chips = P.strip.chips;
         // The menu paints nothing of its own: no arrow, padding, border, fill or shadow.
         const pointerNode = P.menu.actor.get_theme_node();
@@ -566,7 +570,7 @@ export default class Smoke extends Ledge {
         assert(!P.menu.isOpen && !P.deck.visible, 'Escape closes the deck');
         done('click opens, hover switches, Escape closes');
 
-        for (const id of IDS) {
+        for (const id of PIDS) {
             move(...centre(chips.get(id).actor));
             await delay(100);
             click();
@@ -593,7 +597,7 @@ export default class Smoke extends Ledge {
         done('every deck under the top bar');
 
         // Narrow panels: readouts go first, then one summary chip.
-        P.setAvailable(IDS.length * CHIP.compactWidth + IDS.length);
+        P.setAvailable(PIDS.length * CHIP.compactWidth + PIDS.length);
         await delay(200);
         assert(P.strip.mode === 'compact' && [...chips.values()].every(c => c.actor.width === CHIP.compactWidth && !c._column.visible), 'Compact chips keep badge and light');
         await this.capture('panel-compact', {x: 0, y: 0, width: 1920, height: Main.panel.height + PAD});
@@ -607,7 +611,7 @@ export default class Smoke extends Ledge {
         const switcher = P.deck._content.get_first_child();
         assert(P.deck.key === 'cursor' && P.strip._summary.open, `Summary chip opens on the module its light stands for, got ${P.deck.key}`);
         assert(Math.abs(deck.get_transformed_position()[0] - P.strip.summaryActor.get_transformed_position()[0]) <= 1, 'Summary deck aligns with the summary chip');
-        assert(P.deck.visible && switcher.get_n_children() === IDS.length && switcher.get_children().every(b => b.has_style_class_name('ledge-switch')), 'Summary deck has a module switcher row');
+        assert(P.deck.visible && switcher.get_n_children() === PIDS.length && switcher.get_children().every(b => b.has_style_class_name('ledge-switch')), 'Summary deck has a module switcher row');
         switcher.get_child_at_index(5).emit('clicked', 1);
         await delay(250);
         assert(P.deck.key === 'models', 'Switcher changes module');
@@ -838,6 +842,21 @@ export default class Smoke extends Ledge {
         assert(dy >= S.sheet.y + S.sheet.height && Math.abs(dx + S.drop.width / 2 - (claude.get_transformed_position()[0] + claude.width / 2)) <= 2 || dx <= 6,
             'The dropdown hangs under its dial');
         await this.capture('shelf-claude', area());
+        // Agents: the constellation, then its card with the waiting group
+        // first and the collision tag, and the hotkey's target.
+        const agentsItem = S._items.get('agents');
+        assert(agentsItem?.constructor.name === 'Constellation' && agentsItem.info.agents.length === 5 && agentsItem.info.waiting === 1,
+            'Agents show as a constellation with one waiting');
+        S._select('agents');
+        await delay(600);
+        const words = actor => actor instanceof St.Label ? [actor.text] : actor.get_children().flatMap(words);
+        const shown = words(S.deck.actor);
+        assert(shown.findIndex(t => t.toLowerCase().startsWith('waiting')) >= 0
+            && shown.findIndex(t => t.toLowerCase().startsWith('waiting')) < shown.findIndex(t => /ledge · 2 working · same tree/i.test(t)),
+            `Waiting agents come first, then the tree with its collision tag: ${shown.slice(0, 12)}`);
+        const next = this._modules.get('agents').raiseNext();
+        assert(next?.id === 'd2', 'The hotkey goes to the agent that has waited longest');
+        await this.capture('shelf-agents', area());
         S._select('todo');
         await delay(600);
         assert(S.deck.key === 'todo', 'Selecting a row switches the detail');
@@ -886,6 +905,8 @@ export default class Smoke extends Ledge {
         await this.checkAccounts(move);
         const keyboard = Clutter.get_default_backend().get_default_seat().create_virtual_device(Clutter.InputDeviceType.KEYBOARD_DEVICE);
         await this.checkPanel(pointer, keyboard);
+        this._settings.set_boolean('agents', true);
+        await delay(400);
         await this.checkShelf(move);
 
         this._settings.set_boolean('cursor', false);

@@ -33,6 +33,13 @@
     <key name="llamacpp" type="b"><default>true</default><summary>Read a local llama.cpp server</summary></key>
     <key name="llamacpp-port" type="i"><default>8080</default><range min="1" max="65535"/><summary>Port of the local llama.cpp server</summary></key>
     <key name="lmstudio-logs" type="b"><default>true</default><summary>Count requests in LM Studio server logs</summary></key>
+    <key name="agents" type="b"><default>true</default><summary>Show coding agents at a glance</summary></key>
+    <key name="agents-status" type="b"><default>true</default><summary>Read agent status files written by hooks and scripts</summary></key>
+    <key name="agents-herdr" type="b"><default>true</default><summary>Read agents from Herdr</summary></key>
+    <key name="agents-claude" type="b"><default>true</default><summary>Show Claude Code sessions as agents</summary></key>
+    <key name="agents-codex" type="b"><default>true</default><summary>Show Codex sessions as agents</summary></key>
+    <key name="agents-processes" type="b"><default>true</default><summary>Find agent command-line tools among running processes</summary></key>
+    <key name="next-waiting" type="as"><default>['&lt;Super&gt;&lt;Shift&gt;n']</default><summary>Jump to the agent that has waited longest</summary></key>
     <key name="hidden-accounts" type="as"><default>[]</default><summary>Extra accounts hidden from the strip, by key such as claude:work</summary></key>
     <key name="usage-order" type="s"><default>'fixed'</default><choices><choice value="fixed"/><choice value="remaining"/><choice value="deficit"/></choices><summary>Order of usage chips: fixed, least remaining first, or furthest ahead of pace first</summary></key>
     <key name="headline-window" type="s"><default>'session'</default><choices><choice value="session"/><choice value="weekly"/><choice value="tightest"/></choices><summary>Which window a usage chip shows</summary></key>

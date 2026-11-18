@@ -163,7 +163,7 @@ export function iconDots(id, step) {
 export const SHELF = {
     lensWidth: 40, lensTrace: 14, lensRadius: 9, lensMargin: 4,
     dot: 4, dotGap: 2, barDots: 12, barDot: 4, barGap: 3, gaugeWidth: 96,
-    flare: 14, figDot: 3, figGap: 1, iconDot: 2.4, iconGap: 1.2, dial: {size: 34, dots: 28, dot: 2}, logoDot: 1.5, logoRadius: 13, glyphSize: 22, glyphStep: 1.9, iconRadius: 10, iconStep: 0.3, iconDotSize: 1.6, cardRadius: 8, cellGap: 4, divider: 3, reveal: 520, stagger: 70, low: 0.2, scan: 1400,
+    flare: 14, figDot: 3, figGap: 1, iconDot: 2.4, iconGap: 1.2, dial: {size: 34, dots: 28, dot: 2}, logoDot: 1.5, logoRadius: 13, glyphSize: 22, glyphStep: 1.9, iconRadius: 10, iconStep: 0.3, iconDotSize: 1.6, cardRadius: 8, agentColumns: 6, agentStep: 7, agentDot: 4, blip: 900, cellGap: 4, divider: 3, reveal: 520, stagger: 70, low: 0.2, scan: 1400,
     radius: 14, padding: 16, gap: 14, sheetGap: 6, itemRadius: 12,
     tube: {width: 28, height: 78, wall: 1.5, wave: 2.2, waveLength: 7, speed: 2.6, still: 0.6},
     tubeColumn: 62, statWidth: 168, statHeight: 30, detailWidth: 520,

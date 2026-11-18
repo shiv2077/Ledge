@@ -332,3 +332,121 @@ export function formatDuration(seconds) {
     if (minutes < 60) return `${minutes}m`;
     return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
 }
+
+// ---- agents ----
+
+export const AGENT_STATES = ['working', 'waiting', 'idle', 'finished', 'error', 'running'];
+export const WAITING_FOR = ['permission', 'input', 'unknown'];
+// Which source knows an agent's state best: a hook's status file, then
+// Herdr, then the Claude/Codex readers' heuristics, then a bare process.
+export const AGENT_SOURCES = ['status', 'herdr', 'claude', 'codex', 'process'];
+const AGENT_TEXT = 120;
+const AGENT_PATH = 4096;
+
+const clean = (value, limit) => typeof value === 'string' ? value.replace(/[\u0000-\u001f\u007f]/g, '').slice(0, limit) : '';
+const positivePid = value => Number.isInteger(value) && value > 1 ? value : null;
+
+// A status file's contents, checked: version 1, known state, capped
+// strings, no message text. Null when invalid or older than `ttlMs`.
+export function agentStatus(data, now = Date.now(), ttlMs = 12 * 3600e3) {
+    if (!data || typeof data !== 'object' || data.version !== 1) return null;
+    const state = AGENT_STATES.includes(data.state) ? data.state : null;
+    const updated = Date.parse(data.updatedAt);
+    if (!state || !Number.isFinite(updated) || now - updated > ttlMs) return null;
+    return {
+        source: 'status', id: clean(data.id, AGENT_TEXT), name: clean(data.name, AGENT_TEXT), tool: clean(data.tool, 32).toLowerCase(),
+        state, cwd: clean(data.cwd, AGENT_PATH), pid: positivePid(data.pid),
+        waitingFor: state === 'waiting' ? (WAITING_FOR.includes(data.waitingFor) ? data.waitingFor : 'unknown') : null,
+        since: updated, exact: true,
+    };
+}
+
+// Herdr's `api schema` text: the protocol and schema numbers, or null.
+export function herdrSchema(text) {
+    const protocol = /protocol:\s*(\d+)/.exec(String(text ?? ''));
+    const schema = /schema_version:\s*(\d+)/.exec(String(text ?? ''));
+    return protocol && schema ? {protocol: Number(protocol[1]), schema: Number(schema[1])} : null;
+}
+
+const HERDR_STATES = {working: 'working', blocked: 'waiting', idle: 'idle', done: 'finished', unknown: 'running'};
+
+// Agents from Herdr's `api snapshot` JSON. Only identity, folder and state
+// fields are read; titles and labels are not.
+export function herdrAgents(data, now = Date.now()) {
+    const agents = data?.result?.snapshot?.agents;
+    if (!Array.isArray(agents)) return null;
+    return agents.filter(a => a && typeof a.pane_id === 'string').map(a => ({
+        source: 'herdr', id: `herdr:${clean(a.pane_id, AGENT_TEXT)}`, name: '', tool: clean(a.agent ?? '', 32).toLowerCase() || 'agent',
+        state: HERDR_STATES[a.agent_status] ?? 'running', cwd: clean(a.foreground_cwd || a.cwd || '', AGENT_PATH), pid: null,
+        waitingFor: a.agent_status === 'blocked' ? 'unknown' : null, since: now, exact: true, pane: clean(a.pane_id, AGENT_TEXT),
+    }));
+}
+
+// The agent CLI a command line runs, from argv[0] or (for `node <cli>`)
+// argv[1] basename, or null.
+export function agentTool(cmdline, known) {
+    const args = String(cmdline ?? '').split('\0');
+    for (const arg of args.slice(0, 2)) {
+        const base = arg.split('/').pop().replace(/\.(js|mjs|cjs)$/, '');
+        if (known.includes(base)) return base;
+    }
+    return null;
+}
+
+// One list of agents from every source. Same pid = same agent. Without a
+// pid on one side, cwd + tool joins only when exactly one candidate fits,
+// so two agents in one tree stay two. Per field: state from the most exact
+// source, the pane from Herdr.
+export function mergeAgents(lists) {
+    const rank = agent => AGENT_SOURCES.indexOf(agent.source);
+    const all = lists.flat().filter(Boolean).sort((a, b) => rank(a) - rank(b));
+    const merged = [];
+    const join = (match, agent) => {
+        match.sources.push(agent.source);
+        if (rank(agent) < match.rank) {
+            // A more exact source: its state, wait reason and start win.
+            Object.assign(match, {state: agent.state, waitingFor: agent.waitingFor, since: agent.since, exact: agent.exact, rank: rank(agent)});
+        }
+        match.pid ??= agent.pid;
+        match.pane ??= agent.pane;
+        match.cwd ||= agent.cwd;
+        match.name ||= agent.name;
+    };
+    // Agents with a pid first, joined by pid only.
+    for (const agent of all.filter(a => a.pid)) {
+        const match = merged.find(m => m.pid === agent.pid);
+        if (match) join(match, agent);
+        else merged.push({...agent, sources: [agent.source], rank: rank(agent)});
+    }
+    // Then agents without one: cwd + tool, and only when exactly one fits.
+    for (const agent of all.filter(a => !a.pid)) {
+        const candidates = merged.filter(m => m.cwd && m.cwd === agent.cwd && m.tool === agent.tool && !m.sources.includes(agent.source));
+        if (candidates.length === 1) join(candidates[0], agent);
+        else merged.push({...agent, sources: [agent.source], rank: rank(agent)});
+    }
+    return merged.map(({rank: _rank, ...agent}) => agent);
+}
+
+// A branch from .git/HEAD text ("ref: refs/heads/x" or a commit), and the
+// git dir a worktree's .git file points to.
+export function gitHeadBranch(text) {
+    const value = String(text ?? '').trim();
+    const ref = /^ref:\s*refs\/heads\/(.+)$/.exec(value);
+    if (ref) return ref[1];
+    return /^[0-9a-f]{7,40}$/.test(value) ? value.slice(0, 7) : null;
+}
+
+export function gitDirFile(text) {
+    const match = /^gitdir:\s*(.+)$/m.exec(String(text ?? ''));
+    return match ? match[1].trim() : null;
+}
+
+// Trees where two or more agents are working or waiting: tree -> count.
+export function agentCollisions(agents) {
+    const counts = new Map();
+    for (const a of agents) if (a.tree && (a.state === 'working' || a.state === 'waiting')) counts.set(a.tree, (counts.get(a.tree) ?? 0) + 1);
+    return new Map([...counts].filter(([, n]) => n >= 2));
+}
+
+// Waiting agents, longest waiting first.
+export const waitingQueue = agents => agents.filter(a => a.state === 'waiting').sort((a, b) => (a.since ?? 0) - (b.since ?? 0));
