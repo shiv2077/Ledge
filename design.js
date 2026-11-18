@@ -117,10 +117,53 @@ export function logoDots(id) {
     return points;
 }
 
+// Line icons as strokes in a unit box (-1..1): ['line', x1, y1, x2, y2],
+// ['arc', cx, cy, r, from, to] (radians, clockwise from +x) or
+// ['circle', cx, cy, r]. They are drawn as dots along each stroke.
+const D = Math.PI / 180;
+export const LINE_ICONS = {
+    power: [['arc', 0, 0.2, 0.85, 150 * D, 390 * D], ['line', 0, 0.2, 0.42, -0.32]],
+    todo: [['line', -0.8, -0.8, 0.8, -0.8], ['line', 0.8, -0.8, 0.8, 0.8], ['line', 0.8, 0.8, -0.8, 0.8], ['line', -0.8, 0.8, -0.8, -0.8],
+        ['line', -0.42, 0.02, -0.1, 0.34], ['line', -0.1, 0.34, 0.45, -0.3]],
+    github: [['circle', -0.48, -0.62, 0.2], ['circle', 0.48, -0.62, 0.2], ['circle', 0, 0.66, 0.2],
+        ['line', -0.48, -0.42, -0.48, -0.15], ['line', 0.48, -0.42, 0.48, -0.15], ['arc', 0, -0.15, 0.48, 0, 180 * D],
+        ['line', 0, 0.33, 0, 0.46]],
+    training: [['circle', 0, 0, 0.45],
+        ...[0, 45, 90, 135, 180, 225, 270, 315].map(a => ['line', 0.6 * Math.cos(a * D), 0.6 * Math.sin(a * D), 0.88 * Math.cos(a * D), 0.88 * Math.sin(a * D)])],
+    copilot: [['circle', -0.42, 0, 0.36], ['circle', 0.42, 0, 0.36], ['arc', 0, 0, 0.9, 200 * D, 340 * D], ['line', -0.06, 0, 0.06, 0]],
+    models: [['line', -0.55, -0.55, 0.55, -0.55], ['line', 0.55, -0.55, 0.55, 0.55], ['line', 0.55, 0.55, -0.55, 0.55], ['line', -0.55, 0.55, -0.55, -0.55],
+        ...[-0.25, 0.25].flatMap(p => [['line', p, -0.6, p, -0.9], ['line', p, 0.6, p, 0.9], ['line', -0.6, p, -0.9, p], ['line', 0.6, p, 0.9, p]]),
+        ['circle', 0, 0, 0.2]],
+};
+
+// Dots along an icon's strokes, `step` apart (unit box), without near repeats.
+export function iconDots(id, step) {
+    const points = [];
+    const add = (x, y) => {
+        if (!points.some(([px, py]) => Math.hypot(px - x, py - y) < step * 0.6)) points.push([x, y]);
+    };
+    for (const [kind, ...v] of LINE_ICONS[id] ?? []) {
+        if (kind === 'line') {
+            const [x1, y1, x2, y2] = v;
+            const n = Math.max(1, Math.round(Math.hypot(x2 - x1, y2 - y1) / step));
+            for (let i = 0; i <= n; i++) add(x1 + (x2 - x1) * i / n, y1 + (y2 - y1) * i / n);
+        } else {
+            const [cx, cy, r, from = 0, to = 2 * Math.PI] = v;
+            const n = Math.max(3, Math.round(r * (to - from) / step));
+            const closed = kind === 'circle';
+            for (let i = 0; i < n + (closed ? 0 : 1); i++) {
+                const a = from + (to - from) * i / n;
+                add(cx + r * Math.cos(a), cy + r * Math.sin(a));
+            }
+        }
+    }
+    return points;
+}
+
 export const SHELF = {
     lensWidth: 40, lensTrace: 14, lensRadius: 9, lensMargin: 4,
     dot: 4, dotGap: 2, barDots: 12, barDot: 4, barGap: 3, gaugeWidth: 96,
-    flare: 14, figDot: 3, figGap: 1, iconDot: 2.4, iconGap: 1.2, dial: {size: 34, dots: 28, dot: 2}, logoDot: 1.5, logoRadius: 13, glyphSize: 22, glyphStep: 1.9, cardRadius: 8, cellGap: 4, divider: 3, reveal: 520, stagger: 70, low: 0.2, scan: 1400,
+    flare: 14, figDot: 3, figGap: 1, iconDot: 2.4, iconGap: 1.2, dial: {size: 34, dots: 28, dot: 2}, logoDot: 1.5, logoRadius: 13, glyphSize: 22, glyphStep: 1.9, iconRadius: 10, iconStep: 0.3, iconDotSize: 1.6, cardRadius: 8, cellGap: 4, divider: 3, reveal: 520, stagger: 70, low: 0.2, scan: 1400,
     radius: 14, padding: 16, gap: 14, sheetGap: 6, itemRadius: 12,
     tube: {width: 28, height: 78, wall: 1.5, wave: 2.2, waveLength: 7, speed: 2.6, still: 0.6},
     tubeColumn: 62, statWidth: 168, statHeight: 30, detailWidth: 520,

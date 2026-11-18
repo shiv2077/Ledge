@@ -1,7 +1,7 @@
 // Cairo drawing for the Deck look: chamfered panels, segmented meters and
 // monogram badges. Colors arrive resolved from the theme.
 import Cairo from 'cairo';
-import {CHAMFER, METER, TYPE, CHIP, chamferPoints, dotGlyphs, dotOrder} from './design.js';
+import {CHAMFER, METER, TYPE, CHIP, chamferPoints, dotGlyphs, dotOrder, iconDots} from './design.js';
 import {rgba} from './themes.js';
 import {GLYPHS, GLYPH_OUTLINES, GLYPH_SCALE} from './glyphs.js';
 
@@ -363,6 +363,20 @@ export function drawDotGlyph(cr, id, cx, cy, size, step, dot, color) {
     cr.setSourceRGBA(r, g, b, 1);
     cr.fill();
     cr.restore();
+    return true;
+}
+
+// A line icon drawn as dots along its strokes, centred on (cx, cy).
+export function drawLineIcon(cr, id, cx, cy, radius, step, dot, color) {
+    const points = iconDots(id, step);
+    if (!points.length) return false;
+    const [r, g, b] = rgba(color);
+    for (const [x, y] of points) {
+        cr.newSubPath();
+        cr.arc(cx + x * radius, cy + y * radius, dot / 2, 0, 2 * Math.PI);
+    }
+    cr.setSourceRGBA(r, g, b, 1);
+    cr.fill();
     return true;
 }
 
