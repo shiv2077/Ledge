@@ -87,3 +87,12 @@ test('collisions count working and waiting agents per tree; queue is oldest firs
     assert.deepEqual([...agentCollisions(agents)], [['/w/a', 2]]);
     assert.deepEqual(waitingQueue(agents).map(a => a.tree), ['/w/c', '/w/a']);
 });
+
+test('herdr joins the hook\'s agent by session id, even from another folder', () => {
+    const merged = mergeAgents([
+        [{source: 'status', id: 'abc', tool: 'claude', pid: 100, cwd: '/w/repo', state: 'waiting', exact: true}],
+        [{source: 'herdr', id: 'herdr:w1:p1', tool: 'claude', pid: null, cwd: '/home/u', state: 'idle', pane: 'w1:p1', session: 'abc'}],
+    ]);
+    assert.equal(merged.length, 1);
+    assert.deepEqual([merged[0].state, merged[0].pane], ['waiting', 'w1:p1']);
+});

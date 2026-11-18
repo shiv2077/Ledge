@@ -379,6 +379,8 @@ export function herdrAgents(data, now = Date.now()) {
         source: 'herdr', id: `herdr:${clean(a.pane_id, AGENT_TEXT)}`, name: '', tool: clean(a.agent ?? '', 32).toLowerCase() || 'agent',
         state: HERDR_STATES[a.agent_status] ?? 'running', cwd: clean(a.foreground_cwd || a.cwd || '', AGENT_PATH), pid: null,
         waitingFor: a.agent_status === 'blocked' ? 'unknown' : null, since: now, exact: true, pane: clean(a.pane_id, AGENT_TEXT),
+        // The agent's own session id (Claude Code's), when Herdr knows it.
+        session: clean(a.agent_session?.value ?? '', AGENT_TEXT) || null,
     }));
 }
 
@@ -418,9 +420,12 @@ export function mergeAgents(lists) {
         if (match) join(match, agent);
         else merged.push({...agent, sources: [agent.source], rank: rank(agent)});
     }
-    // Then agents without one: cwd + tool, and only when exactly one fits.
+    // Then agents without one: by session id when both know it, else
+    // cwd + tool, and only when exactly one fits.
     for (const agent of all.filter(a => !a.pid)) {
-        const candidates = merged.filter(m => m.cwd && m.cwd === agent.cwd && m.tool === agent.tool && !m.sources.includes(agent.source));
+        const bySession = agent.session ? merged.filter(m => m.id === agent.session || m.id === `claude:${agent.session}`) : [];
+        const candidates = bySession.length ? bySession
+            : merged.filter(m => m.cwd && m.cwd === agent.cwd && m.tool === agent.tool && !m.sources.includes(agent.source));
         if (candidates.length === 1) join(candidates[0], agent);
         else merged.push({...agent, sources: [agent.source], rank: rank(agent)});
     }
