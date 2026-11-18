@@ -18,8 +18,6 @@ Ledge is a GNOME Shell extension for people who code with several AI agents at o
 - **hover it**, and a slim black strip drops out of the bar with your Claude Code and Codex limits, every running agent, and your power, todos, GitHub and training runs;
 - **hover any item**, and its details drop down below it.
 
-![The lens at rest beside the clock](docs/screenshots/lens.webp)
-
 ## Contents
 
 - [Highlights](#highlights)
