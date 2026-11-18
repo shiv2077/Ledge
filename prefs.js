@@ -82,6 +82,8 @@ export default class LedgePreferences extends ExtensionPreferences {
         usage.add(hiddenRow);
 
         const alerts = group('Alerts', 'When a coding session finishes or needs you. Do Not Disturb silences both.');
+        addSwitch(alerts, 'alert-sounds', 'Sounds', 'Play a sound when a session finishes or needs you.');
+        addSwitch(alerts, 'limit-notifications', 'Limit notifications', 'Notify at 80 % and 100 % of a usage limit.');
         addSpin(alerts, 'peek-seconds', 'Peek', 'Seconds the edge rail unfolds to show the session; 0 turns it off.', 0, 30, 1);
         const SOUNDS = ['complete', 'message-new-instant', 'bell', 'dialog-information', ''];
         const SOUND_NAMES = ['Complete', 'Message', 'Bell', 'Information', 'None'];

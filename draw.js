@@ -1,7 +1,7 @@
 // Cairo drawing for the Deck look: chamfered panels, segmented meters and
 // monogram badges. Colors arrive resolved from the theme.
 import Cairo from 'cairo';
-import {CHAMFER, METER, TYPE, CHIP, chamferPoints} from './design.js';
+import {CHAMFER, METER, TYPE, CHIP, chamferPoints, dotGlyphs, dotOrder} from './design.js';
 import {rgba} from './themes.js';
 
 // Source color with its own alpha scaled by `alpha`.
@@ -215,6 +215,59 @@ export function drawTube(cr, w, h, level, phase, amplitude, waveLength, color, g
     cr.rectangle(w * 0.24, h * 0.12, 1.5, h * 0.5);
     cr.setSourceRGBA(1, 1, 1, 0.12);
     cr.fill();
+}
+
+// Figures in dot matrix. `reveal` (0..1) switches dots on in their scatter
+// order; unlit dots show faintly.
+export function drawDotText(cr, text, x, y, dot, gap, color, off, reveal = 1) {
+    const {dots} = dotGlyphs(text);
+    const [r, g, b] = rgba(color);
+    const [or, og, ob] = rgba(off);
+    const step = dot + gap;
+    for (const [column, row] of dots) {
+        const lit = dotOrder(column, row) < reveal;
+        cr.arc(x + column * step + dot / 2, y + row * step + dot / 2, dot / 2, 0, 2 * Math.PI);
+        if (lit) cr.setSourceRGBA(r, g, b, 1);
+        else cr.setSourceRGBA(or, og, ob, 1);
+        cr.fill();
+    }
+}
+
+export const dotTextWidth = (text, dot, gap) => dotGlyphs(text).columns * (dot + gap) - gap;
+
+// A row of round dots: `fraction` of them lit, lit dots switching on left
+// to right as `reveal` goes 0..1. `scan` (0..1 or null) is a moving dot in
+// `pulse` color, for a working session.
+export function drawDotBar(cr, x, y, count, dot, gap, fraction, color, off, reveal = 1, scan = null, pulse = color) {
+    const lit = typeof fraction === 'number' ? Math.round(Math.max(0, Math.min(1, fraction)) * count) : 0;
+    const shown = Math.min(lit, Math.ceil(lit * reveal));
+    const scanAt = scan === null ? -1 : Math.floor(scan * count) % count;
+    for (let i = 0; i < count; i++) {
+        const color_ = i === scanAt ? pulse : i < shown ? color : off;
+        const [r, g, b] = rgba(color_);
+        cr.arc(x + i * (dot + gap) + dot / 2, y + dot / 2, dot / 2, 0, 2 * Math.PI);
+        cr.setSourceRGBA(r, g, b, 1);
+        cr.fill();
+    }
+}
+
+// The shelf sheet: square where it leaves the bar, rounded below, with a
+// faint rim so it reads on a dark wallpaper.
+export function drawSheet(cr, w, h, radius, fill, rim) {
+    const [r, g, b, a] = rgba(fill);
+    const rr = Math.min(radius, w / 2, h);
+    cr.moveTo(0, 0);
+    cr.lineTo(w, 0);
+    cr.lineTo(w, h - rr);
+    cr.arc(w - rr, h - rr, rr, 0, Math.PI / 2);
+    cr.lineTo(rr, h);
+    cr.arc(rr, h - rr, rr, Math.PI / 2, Math.PI);
+    cr.closePath();
+    cr.setSourceRGBA(r, g, b, a ?? 1);
+    cr.fillPreserve();
+    cr.setSourceRGBA(1, 1, 1, rim);
+    cr.setLineWidth(1);
+    cr.stroke();
 }
 
 // The lens trace: a short line in `color`, moving when `amplitude` > 0.

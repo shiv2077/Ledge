@@ -41,6 +41,8 @@
     <key name="costs" type="b"><default>true</default><summary>Estimate spend from local Claude Code and Codex transcripts</summary></key>
     <key name="alerts-muted" type="as"><default>[]</default><summary>Providers whose limit alerts are muted, by id</summary></key>
     <key name="peek-seconds" type="i"><default>5</default><range min="0" max="30"/><summary>Seconds the rail stays open on a finished or waiting session; 0 turns peek off</summary></key>
+    <key name="alert-sounds" type="b"><default>false</default><summary>Play a sound when a session finishes or needs you</summary></key>
+    <key name="limit-notifications" type="b"><default>true</default><summary>Show a notification at 80 and 100 percent of a usage limit</summary></key>
     <key name="sound-finished" type="s"><default>'complete'</default><choices><choice value="complete"/><choice value="message-new-instant"/><choice value="bell"/><choice value="dialog-information"/><choice value=""/></choices><summary>Sound theme event when a session finishes, or empty for none</summary></key>
     <key name="sound-waiting" type="s"><default>'message-new-instant'</default><choices><choice value="complete"/><choice value="message-new-instant"/><choice value="bell"/><choice value="dialog-information"/><choice value=""/></choices><summary>Sound theme event when a session needs you, or empty for none</summary></key>
     <key name="sound-preview" type="s"><default>''</default><summary>Sound theme event to play once from preferences; Ledge resets it after playing</summary></key>

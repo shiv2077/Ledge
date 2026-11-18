@@ -80,7 +80,8 @@ export default class Ledge extends Extension {
     // peek also stays away from a fullscreen window.
     _alert({kind, key}) {
         if (!this._alive || !this._notifications.get_boolean('show-banners')) return;
-        this._play(this._settings.get_string(kind === 'waiting' ? 'sound-waiting' : 'sound-finished'));
+        if (this._settings.get_boolean('alert-sounds'))
+            this._play(this._settings.get_string(kind === 'waiting' ? 'sound-waiting' : 'sound-finished'));
         const seconds = this._settings.get_int('peek-seconds');
         if (seconds > 0 && !global.display.focus_window?.is_fullscreen()) this._placement.peek?.(key, seconds);
     }

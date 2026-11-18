@@ -305,8 +305,8 @@ function themeRules(t) {
     return `
 .ledge-readout, .ledge-deck-title, .ledge-body, .ledge-row-title, .ledge-chip-icon { color: ${cssColor(t.textPrimary)}; }
 .ledge-shelf-figure, .ledge-shelf-name, .ledge-lens-figure { color: ${cssColor(t.textPrimary)}; }
-.ledge-shelf-value { color: ${cssColor(t.textSecondary)}; }
-.ledge-shelf-item:hover, .ledge-shelf-item:checked { background-color: ${cssColor(t.controlHover)}; }
+.ledge-shelf-value, .ledge-shelf-tag { color: ${cssColor(t.textSecondary)}; }
+.ledge-shelf-item:hover, .ledge-shelf-item:checked { background-color: ${cssColor(t.textPrimary.slice(0, 7) + '14')}; }
 .ledge-shelf-item:focus { ${focusRing} }
 .ledge-lens { background-color: ${cssColor(t.control)}; }
 .ledge-lens:hover, .ledge-lens:checked, .ledge-lens:focus { background-color: ${cssColor(t.controlHover)}; }

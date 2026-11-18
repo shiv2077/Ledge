@@ -45,13 +45,44 @@ export const RAIL = {padding: SPACE.xs, endPadding: SPACE.md, chipGap: SPACE.xs}
 export const DECK = {width: 340, padding: SPACE.lg, spacing: SPACE.md, rule: 2, bracket: 12, rowIcon: 16, actionIcon: 14};
 
 // The shelf: a glass lens in the top bar that opens into one glass sheet.
+// A 5 x 7 dot font for figures: each glyph is seven rows of five bits.
+export const DOT_FONT = {
+    '0': [14, 17, 19, 21, 25, 17, 14], '1': [4, 12, 4, 4, 4, 4, 14], '2': [14, 17, 1, 2, 4, 8, 31],
+    '3': [30, 1, 1, 14, 1, 1, 30], '4': [2, 6, 10, 18, 31, 2, 2], '5': [31, 16, 30, 1, 1, 17, 14],
+    '6': [6, 8, 16, 30, 17, 17, 14], '7': [31, 1, 2, 4, 8, 8, 8], '8': [14, 17, 17, 14, 17, 17, 14],
+    '9': [14, 17, 17, 15, 1, 2, 12], '%': [24, 25, 2, 4, 8, 19, 3], '.': [0, 0, 0, 0, 0, 12, 12],
+    '-': [0, 0, 0, 31, 0, 0, 0], '∞': [0, 0, 10, 21, 10, 0, 0], ' ': [0, 0, 0, 0, 0, 0, 0],
+};
+export const DOT_ROWS = 7;
+export const DOT_COLUMNS = 5;
+
+// The dots of `text` as [column, row] pairs, with one blank column between
+// glyphs. Unknown characters are blank. Returns {dots, columns}.
+export function dotGlyphs(text) {
+    const dots = [];
+    let column = 0;
+    for (const char of String(text).replace('—', '-')) {
+        const rows = DOT_FONT[char] ?? DOT_FONT[' '];
+        rows.forEach((bits, row) => {
+            for (let c = 0; c < DOT_COLUMNS; c++) if (bits & (1 << (DOT_COLUMNS - 1 - c))) dots.push([column + c, row]);
+        });
+        column += DOT_COLUMNS + 1;
+    }
+    return {dots, columns: Math.max(0, column - 1)};
+}
+
+// Order in which a figure's dots switch on: a fixed scatter, so a reveal
+// looks like a display settling rather than a wipe.
+export const dotOrder = (column, row) => ((column * 7 + row * 13) % 17) / 17;
+
 export const SHELF = {
     lensWidth: 40, lensTrace: 14, lensRadius: 9, lensMargin: 4,
-    radius: 18, padding: 18, gap: 16, sheetGap: 6, itemRadius: 12,
+    dot: 4, dotGap: 2, barDots: 12, barDot: 4, barGap: 3, gaugeWidth: 96, reveal: 520, stagger: 70, low: 0.2, scan: 1400,
+    radius: 22, padding: 20, gap: 14, sheetGap: 6, itemRadius: 12,
     tube: {width: 28, height: 78, wall: 1.5, wave: 2.2, waveLength: 7, speed: 2.6, still: 0.6},
     tubeColumn: 62, statWidth: 168, statHeight: 30, detailWidth: 520,
-    tint: 0.74, blur: 30, brightness: 0.6, sheen: 0.07, rim: 0.12,
-    open: 340, close: 160, intent: 120, grace: 420, fill: 0.006, lensFrame: 50,
+    rim: 0.06,
+    open: 280, close: 160, intent: 120, grace: 420, fill: 0.006, lensFrame: 50,
 };
 
 // A rounded rectangle as whole-pixel rows, for the glass stencil clip.

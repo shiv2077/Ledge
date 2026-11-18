@@ -154,7 +154,7 @@ class UsageSource {
             const key = accountKey(reading);
             const {alerts, state} = limitAlerts(limits.get(key) ?? null, window);
             limits.set(key, state);
-            if (muted.includes(reading.id) || muted.includes(key) || !alerts.length) continue;
+            if (!this.settings.get_boolean('limit-notifications') || muted.includes(reading.id) || muted.includes(key) || !alerts.length) continue;
             const step = Math.max(...alerts);
             const name = reading.account ? `${NAMES[reading.id]} (${accountName(reading.account)})` : NAMES[reading.id];
             notify(step >= 100 ? `${name} limit reached` : `${name} at ${step}%`,
