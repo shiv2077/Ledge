@@ -142,7 +142,9 @@ export class AgentsModule extends Module {
         return ui.row(`${TOOL_NAMES[agent.tool] ?? agent.tool} · ${where}`, {
             mono: true,
             detail: [elapsed, how].filter(Boolean).join(' · '),
-            trailing: [ui.label(state, agent.state === 'waiting' || collisions.has(agent.tree) ? 'ledge-warning' : 'ledge-caption')],
+            // Red: waiting on you, or active in a tree another agent also works in.
+            trailing: [ui.label(state, agent.state === 'waiting' || (agent.state === 'working' && collisions.has(agent.tree))
+                ? 'ledge-warning' : 'ledge-caption')],
             onClick: () => this.raise(agent),
         });
     }
@@ -171,7 +173,7 @@ export class AgentsModule extends Module {
         for (const [tree, agents] of trees) {
             const name = GLib.path_get_basename(tree) || 'elsewhere';
             const clash = collisions.get(tree);
-            const section = ui.section(clash ? `${name} · ${clash} working · same tree` : name);
+            const section = ui.section(clash ? `${name} · ${clash} active · same tree` : name);
             for (const agent of agents) section.add_child(this._row(ui, agent, collisions));
             body.add_child(section);
         }

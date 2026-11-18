@@ -852,7 +852,7 @@ export default class Smoke extends Ledge {
         const words = actor => actor instanceof St.Label ? [actor.text] : actor.get_children().flatMap(words);
         const shown = words(S.deck.actor);
         assert(shown.findIndex(t => t.toLowerCase().startsWith('waiting')) >= 0
-            && shown.findIndex(t => t.toLowerCase().startsWith('waiting')) < shown.findIndex(t => /ledge · 2 working · same tree/i.test(t)),
+            && shown.findIndex(t => t.toLowerCase().startsWith('waiting')) < shown.findIndex(t => /ledge · 2 active · same tree/i.test(t)),
             `Waiting agents come first, then the tree with its collision tag: ${shown.slice(0, 12)}`);
         const next = this._modules.get('agents').raiseNext();
         assert(next?.id === 'd2', 'The hotkey goes to the agent that has waited longest');
