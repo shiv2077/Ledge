@@ -1,8 +1,10 @@
 {
   "uuid": "ledge@shiv2077",
   "name": "Ledge",
-  "description": "An instrument strip in the top bar or on a screen edge: coding usage and spend, power, todos, local models, GitHub, Copilot and training runs.",
-  "shell-version": ["50"],
+  "description": "A dot-matrix strip in the top bar for people who code with AI agents. See every running agent at a glance, which ones are working or waiting on you, and jump to the one that needs you with Super+Shift+N. Also shows Claude Code and Codex usage limits with pace and spend, plus power, todos, GitHub and training runs. Reads your existing tool sign-ins and local session files only; no telemetry, no message text.",
+  "shell-version": [
+    "50"
+  ],
   "version": 2,
   "settings-schema": "org.gnome.shell.extensions.ledge",
   "url": "https://github.com/shiv2077/Ledge"
