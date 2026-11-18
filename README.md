@@ -25,7 +25,6 @@ Hover any of them and its detail drops down. Everything is local and asynchronou
 - [Highlights](#highlights)
 - [Agents](#agents)
 - [Widgets](#widgets)
-- [Placements](#placements)
 - [Alerts](#alerts)
 - [Appearance](#appearance)
 - [Installation](#installation)
@@ -97,23 +96,12 @@ python3 ~/.local/share/ledge/tools/ledge_agent.py --id build-bot --tool mybot --
 | GitHub | Review requests | Pull requests and CI | `gh` CLI |
 | Training | Newest run's loss | Recent runs | `~/.local/share/ledge/runs/` |
 
-## Placements
-
-The strip under the top bar is the default. Preferences → Where Ledge lives also offers chips in the top bar, or a rail on any screen edge.
-
-<table>
-<tr>
-<td width="50%"><img src="docs/screenshots/shelf-rest.webp" alt="The lens beside the clock at rest"></td>
-<td width="50%"><img src="docs/rail-unfold.webp" alt="The edge tick unfolding into a rail and opening a deck"></td>
-</tr>
-</table>
-
 ## Alerts
 
 | Event | What happens |
 | --- | --- |
-| A coding session finishes | The **Finished sound** plays; on the edge rail, Ledge unfolds for **Peek** seconds |
-| A session waits on you | The **Waiting sound** plays, the chip light blinks amber and the rail peeks |
+| A coding session finishes | The strip opens for **Peek** seconds; the **Finished sound** plays if sounds are on |
+| A session waits on you | The lens flashes red, its dot blinks red, and the strip opens; the **Waiting sound** plays if sounds are on |
 | A usage window reaches 80 % or 100 % | One notification each, re-armed when the window resets |
 
 Do Not Disturb silences sounds and peeks. Peeks also stay away from fullscreen windows. Mute limit alerts per provider in preferences.
@@ -122,12 +110,11 @@ Do Not Disturb silences sounds and peeks. Peeks also stay away from fullscreen w
 
 | Theme | Description |
 | --- | --- |
-| **Midnight** | Deep blue-black instrument panel. The default. |
+| **Midnight** | Matte black. The default. |
 | **Graphite** | Soft dark grey. |
 | **Nord**, **Catppuccin Mocha**, **Dracula** | The well-known palettes. |
 | **Ocean** | Deep navy. |
 | **Snow** | Light. |
-| **Frosted Dark**, **Frosted Light** | A live blur of whatever is behind the rail and deck, clipped to their chamfered outline. |
 | **System** | Follows Ubuntu's light or dark style and your accent colour, live. |
 | **Custom** | Your own colours and opacity. |
 
@@ -159,11 +146,10 @@ gnome-extensions prefs ledge@shiv2077
 | Open the strip | Hover or click the lens beside the clock; hover a dial for its dropdown |
 | Next waiting agent | **Super+Shift+N** |
 | Keyboard | **Super+Shift+L** opens Ledge, **Tab** walks controls, **Escape** closes |
-| Keep a deck open (edge) | Right-click its chip, or choose **pin** in the deck |
 | Raise a session's window | Click the session row in a usage deck |
 | Preview without accounts | Turn on **Demo readings** in preferences |
 
-Preferences have one group per widget with its switch and options: which window a usage chip shows, chip order (fixed, least left first, or furthest ahead of pace first), countdown or clock reset times, hidden accounts, the llama.cpp port and refresh intervals.
+Preferences have one group per widget with its switch and options: which window a usage dial shows, dial order (fixed, least left first, or furthest ahead of pace first), countdown or clock reset times, hidden accounts, the llama.cpp port and refresh intervals.
 
 ## Reporting training runs
 
@@ -193,15 +179,15 @@ There is no telemetry. Ledge stores no tokens and never logs credentials or mess
 
 ## How it works
 
-Each widget is a module in [`modules/`](modules) with a small interface: one or more cells for the strip, a deck, and `start()` / `stop()`. The host in [`extension.js`](extension.js) hands the cells to the placement: [`lib/shelf.js`](lib/shelf.js) (the default strip), [`lib/panel.js`](lib/panel.js) or [`lib/rail.js`](lib/rail.js). Agent sources live in [`lib/agents/`](lib/agents) and are merged by [`modules/agents.js`](modules/agents.js). Readers in [`reader/`](reader) run as short Python subprocesses. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [DECISIONS.md](DECISIONS.md) and [docs/TESTING.md](docs/TESTING.md).
+Each widget is a module in [`modules/`](modules) with a small interface: one or more cells for the strip, a deck, and `start()` / `stop()`. The host in [`extension.js`](extension.js) hands the cells to [`lib/shelf.js`](lib/shelf.js), which draws the lens, the strip and the dropdowns. Agent sources live in [`lib/agents/`](lib/agents) and are merged by [`modules/agents.js`](modules/agents.js). Readers in [`reader/`](reader) run as short Python subprocesses. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [DECISIONS.md](DECISIONS.md) and [docs/TESTING.md](docs/TESTING.md).
 
-![Architecture: host, placements, modules and their sources](docs/diagrams/architecture.svg)
+![Architecture: host, modules and their sources](docs/diagrams/architecture.svg)
 
 ## Development
 
 ```sh
 make test       # Node, Python and GJS tests, schema compile, syntax checks
-make smoke      # a real headless GNOME Shell exercising every widget, placement and theme
+make smoke      # a real headless GNOME Shell exercising every widget and theme
 make demo-assets  # README images from the smoke screenshots (ffmpeg)
 make diagrams   # docs/diagrams from the code
 make links      # check links in the docs
@@ -217,7 +203,7 @@ GJS caches ES modules for the life of the shell, so JavaScript changes need `mak
 | --- | --- |
 | Extension "does not exist" after install | Log out and back in once. |
 | Changes do not show after editing | GJS caches modules: log out and in, or use `make nested`. |
-| Usage chip stale or dashed | Use the provider's own tool once, then press **refresh**. |
+| Usage dial stale or dashed | Use the provider's own tool once, then press **refresh**. |
 | Codex not found | Set `LEDGE_CODEX_BIN` in your login environment and log in again. |
 | GitHub or Copilot says gh is missing or logged out | Install `gh` and run `gh auth login`. |
 | Copilot says there is no plan | The signed-in GitHub account has no Copilot subscription. |
