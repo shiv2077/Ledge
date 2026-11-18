@@ -51,13 +51,13 @@ Hover any of them and its detail drops down. Everything is local and asynchronou
 
 ![Ledge demo: the strip opens, a dial's dropdown, then the agents card](docs/agents-demo.webp)
 
-| Source | What it gives | Tested by hand |
+| Source | What it gives | Tested by hand (GNOME 50, Nov 2026) |
 | --- | --- | --- |
-| **Hook status files** (`~/.local/share/ledge/agents/`) | Exact states from Claude Code hooks or any script: working, waiting (permission or input) and finished | pending |
-| **Claude Code sessions** | Working, waiting and idle, guessed from session files when no hook reports (marked ◦) | pending |
-| **Codex sessions** | Working and idle, guessed from Codex session files (marked ◦) | pending |
-| **Herdr** | Every agent in your Herdr panes, with exact states and pane focus. Read with `herdr api snapshot` only while Herdr's socket exists | pending |
-| **Running processes** | Agent command-line tools found in `/proc` (claude, codex, opencode, pi, amp, gemini, aider), shown as *running* only | pending |
+| **Hook status files** (`~/.local/share/ledge/agents/`) | Exact states from Claude Code hooks or any script: working, waiting (permission or input) and finished | yes |
+| **Claude Code sessions** | Working, waiting and idle, guessed from session files when no hook reports (marked ◦) | yes |
+| **Codex sessions** | Working and idle, guessed from Codex session files (marked ◦) | not yet |
+| **Herdr** | Every agent in your Herdr panes, with exact states and pane focus. Read with `herdr api snapshot` only while Herdr's socket exists | listing yes; pane focus not yet |
+| **Running processes** | Agent command-line tools found in `/proc` (claude, codex, opencode, pi, amp, gemini, aider), shown as *running* only | yes |
 
 The same agent seen by several sources shows once. The state comes from the most exact source: a hook, then Herdr, then a session guess, then a bare process. Each source has its own switch under Preferences → Agents.
 
